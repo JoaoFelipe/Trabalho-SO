@@ -1,6 +1,7 @@
 import os, sys, pygame
 from pygame.locals import *
 from simulador import Simulador
+from processo import EntradaTP
 
 PRETO = 0, 0, 0
 BRANCO = 255, 255, 255
@@ -12,9 +13,16 @@ TITULO = 'Simulador'
 ALTURA_BLOCO = 30
 LARGURA_BLOCO = 140
 
+ALTURA_ENTRADA_TP = 30
+LARGURA_ENTRADA_TP = 240
+
+ESPACO_BIT = ALTURA_ENTRADA_TP
+
+
 MP_TEXT_X = 20
 POSICAO_MP = 40
 POSICAO_MS = 620
+POSICAO_TP = 280
 
 
 def calcular_cor(num, processos):
@@ -53,6 +61,10 @@ class PygameInterface(object):
 
         self.simulador = Simulador(1024, 32, 8*1024, 100*1024, [2000, 1000, 3000, 5000, 7000, 2000, 8000])
         self.simulador.quadros[0] = self.simulador.processos[0].paginas[0]
+        self.simulador.processos[0].tabela_paginas[0].presente = 1
+        self.simulador.processos[0].tabela_paginas[0].quadro = 0
+        
+        self.processo_selecionado = self.simulador.processos[0]
         self.final_MP = -max(self.imprimir_MP(), self.imprimir_MS()) + self.height    
         self.estado = EstadoMemorias(self)
 
@@ -68,6 +80,26 @@ class PygameInterface(object):
         rect = pygame.Rect(x, self.scroll+y, LARGURA_BLOCO, ALTURA_BLOCO)
         pygame.draw.rect(self.screen, cor, rect, 0)     
         pygame.draw.rect(self.screen, AZUL, rect, 1)
+        
+    def imprimir_entrada_tp(self, entrada, x, y, cor):
+        rectp = pygame.Rect(x, self.scroll+y, ESPACO_BIT, ALTURA_ENTRADA_TP)
+        pygame.draw.rect(self.screen, cor, rectp, 1)    
+        text = self.font.render(str(entrada.presente), 1, BRANCO)
+        textrect = text.get_rect(center=rectp.center)
+        self.screen.blit(text, textrect)
+        
+        rectm = pygame.Rect(x+ESPACO_BIT, self.scroll+y, ESPACO_BIT, ALTURA_ENTRADA_TP)
+        pygame.draw.rect(self.screen, cor, rectm, 1)
+        text = self.font.render(str(entrada.modificado), 1, BRANCO)
+        textrect = text.get_rect(center=rectm.center)
+        self.screen.blit(text, textrect)
+        
+        rect = pygame.Rect(x+2*ESPACO_BIT, self.scroll+y, LARGURA_ENTRADA_TP-2*ESPACO_BIT, ALTURA_ENTRADA_TP)
+        pygame.draw.rect(self.screen, cor, rect, 1)
+        text = self.font.render(str(entrada.quadro), 1, BRANCO)
+        textrect = text.get_rect(center=rect.center)
+        self.screen.blit(text, textrect)     
+        #pygame.draw.rect(self.screen, AZUL, rect, 1)    
         
     def imprimir_numero(self, y, num):
         centerx = MP_TEXT_X
@@ -96,6 +128,20 @@ class PygameInterface(object):
                 self.imprimir_pagina(pagina, POSICAO_MS, y)            
                 y += ALTURA_BLOCO
         return y + ALTURA_BLOCO
+
+    def imprimir_TP(self, processo):    
+        text = self.font.render("Processo "+str(processo.identificador), 1, BRANCO)
+        textrect = text.get_rect(centerx=POSICAO_TP + LARGURA_ENTRADA_TP / 2,centery=ALTURA_ENTRADA_TP + ALTURA_ENTRADA_TP / 2)
+        self.screen.blit(text, textrect)
+        y = ALTURA_ENTRADA_TP
+        cor = calcular_cor(processo.identificador, len(self.simulador.processos)) 
+        self.imprimir_entrada_tp(EntradaTP("P", "M", "Quadro"), POSICAO_TP, y, cor)
+        y += ALTURA_ENTRADA_TP
+        for i, entrada in enumerate(processo.tabela_paginas):
+            self.imprimir_entrada_tp(entrada, POSICAO_TP, y, cor)
+            y += ALTURA_ENTRADA_TP
+        return y + ALTURA_ENTRADA_TP
+
             
 
     def game_loop(self):
@@ -147,6 +193,7 @@ class EstadoMemorias(Estado):
     def imprimir(self):
         self.interface.imprimir_MP()        
         self.interface.imprimir_MS()        
+        self.interface.imprimir_TP(self.interface.processo_selecionado)
     
 
 PygameInterface().game_loop()
