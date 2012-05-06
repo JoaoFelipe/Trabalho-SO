@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os, sys, pygame
 from pygame.locals import *
 from simulador import Simulador
@@ -124,6 +125,9 @@ class PygameInterface(object):
         self.screen.blit(quadtext, quadrect)
     
     def imprimir_MP(self):    
+        text = self.font.render(u"Memória principal", 1, BRANCO)
+        textrect = text.get_rect(centerx=POSICAO_MP + LARGURA_BLOCO / 2,centery=self.scroll + ALTURA_BLOCO / 2)
+        self.screen.blit(text, textrect)
         y = ALTURA_BLOCO
         for i,pagina in enumerate(self.simulador.quadros):
             cor = BRANCO if pagina == None else calcular_cor(pagina.processo.identificador, len(self.simulador.processos))
@@ -135,6 +139,9 @@ class PygameInterface(object):
         return y + ALTURA_BLOCO
 
     def imprimir_MS(self):    
+        text = self.font.render(u"Memória secundária", 1, BRANCO)
+        textrect = text.get_rect(centerx=POSICAO_MS + LARGURA_BLOCO / 2,centery=self.scroll + ALTURA_BLOCO / 2)
+        self.screen.blit(text, textrect)
         y = ALTURA_BLOCO
         for i, processo in enumerate(self.simulador.processos):
             inicio = y
@@ -149,7 +156,7 @@ class PygameInterface(object):
         return y + ALTURA_BLOCO
 
     def imprimir_TP(self, processo):    
-        text = self.font.render("Processo "+str(processo.identificador), 1, BRANCO)
+        text = self.font.render(u"Tabela de páginas de P"+str(processo.identificador), 1, BRANCO)
         textrect = text.get_rect(centerx=POSICAO_TP + LARGURA_ENTRADA_TP / 2,centery=self.scroll + ALTURA_ENTRADA_TP / 2)
         self.screen.blit(text, textrect)
         y = ALTURA_ENTRADA_TP
