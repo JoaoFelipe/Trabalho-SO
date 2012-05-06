@@ -2,6 +2,8 @@ import os, sys, pygame
 from pygame.locals import *
 from simulador import Simulador
 from processo import EntradaTP
+from collections import namedtuple
+from functools import partial
 
 PRETO = 0, 0, 0
 BRANCO = 255, 255, 255
@@ -23,6 +25,13 @@ MP_TEXT_X = 20
 POSICAO_MP = 40
 POSICAO_MS = 620
 POSICAO_TP = 280
+
+
+class Button(namedtuple('Button', ['x', 'y', 'width', 'height', 'function'])):
+
+    def __contains__(self, clique):
+        return self.x <= clique[0] <= self.x+self.width and self.y <= clique[1] <= self.y+self.height 
+
 
 
 def calcular_cor(num, processos):
@@ -58,6 +67,8 @@ class PygameInterface(object):
         self.clock = pygame.time.Clock()
         self.font = pygame.font.Font(None, 20)
         self.scroll = ALTURA_BLOCO
+        self.buttons = []
+        self.clique = []
 
         self.simulador = Simulador(1024, 32, 8*1024, 100*1024, [2000, 1000, 3000, 5000, 7000, 2000, 8000])
         self.simulador.quadros[0] = self.simulador.processos[0].paginas[0]
@@ -66,7 +77,9 @@ class PygameInterface(object):
         
         self.processo_selecionado = self.simulador.processos[0]
         self.final_MP = -max(self.imprimir_MP(), self.imprimir_MS()) + self.height    
-        self.estado = EstadoMemorias(self)
+        
+        self.velocidade_scroll = 10
+        self.scroll_pressionado = 0
 
     
     def imprimir_pagina(self, pagina, x, y):
@@ -122,16 +135,20 @@ class PygameInterface(object):
     def imprimir_MS(self):    
         y = ALTURA_BLOCO
         for i, processo in enumerate(self.simulador.processos):
+            inicio = y
             cor = calcular_cor(processo.identificador, len(self.simulador.processos)) 
             for j, pagina in enumerate(processo.paginas):
                 self.imprimir_bloco(POSICAO_MS, y, cor)
                 self.imprimir_pagina(pagina, POSICAO_MS, y)            
                 y += ALTURA_BLOCO
+               
+            button = Button(POSICAO_MS, inicio, LARGURA_BLOCO, y-inicio, partial(self._set_processo_selecionado, processo))
+            self.buttons.append(button)
         return y + ALTURA_BLOCO
 
     def imprimir_TP(self, processo):    
         text = self.font.render("Processo "+str(processo.identificador), 1, BRANCO)
-        textrect = text.get_rect(centerx=POSICAO_TP + LARGURA_ENTRADA_TP / 2,centery=ALTURA_ENTRADA_TP + ALTURA_ENTRADA_TP / 2)
+        textrect = text.get_rect(centerx=POSICAO_TP + LARGURA_ENTRADA_TP / 2,centery=self.scroll + ALTURA_ENTRADA_TP / 2)
         self.screen.blit(text, textrect)
         y = ALTURA_ENTRADA_TP
         cor = calcular_cor(processo.identificador, len(self.simulador.processos)) 
@@ -142,26 +159,8 @@ class PygameInterface(object):
             y += ALTURA_ENTRADA_TP
         return y + ALTURA_ENTRADA_TP
 
-            
-
-    def game_loop(self):
-        while 1:
-            self.clock.tick(60)
-            self.estado.eventos()        
-            self.estado.update()
-            self.screen.fill(PRETO)
-            self.estado.imprimir()
-            pygame.display.flip()
-    
-
-        
-
-class Estado(object):
-
-    def __init__(self, interface):
-        self.interface = interface
-        self.velocidade_scroll = 10
-        self.scroll_pressionado = 0
+    def _set_processo_selecionado(self, processo):
+        self.processo_selecionado = processo
 
     def eventos(self):
         for event in pygame.event.get():
@@ -175,25 +174,57 @@ class Estado(object):
                 if event.key == K_DOWN:
                     self.scroll_pressionado = -1     
             elif event.type == KEYUP:
-                self.scroll_pressionado = 0    
-
+                self.scroll_pressionado = 0
+            elif event.type == MOUSEBUTTONDOWN:    
+                clique = list(pygame.mouse.get_pos())
+                clique[1] = clique[1] - self.scroll
+                buttons = [button for button in self.buttons if clique in button]
+                if buttons:
+                    self.clique = buttons
+                else:
+                    self.clique = tuple(clique)
+            elif event.type == MOUSEBUTTONUP:
+                clique = list(pygame.mouse.get_pos())
+                clique[1] = clique[1] - self.scroll
+                if isinstance(self.clique, list):
+                    [button.function() for button in self.clique if clique in button]
+                self.clique = []
+            
     def update(self):
-        self.interface.scroll += self.scroll_pressionado * self.velocidade_scroll
-        if self.interface.scroll <= self.interface.final_MP:
-            self.interface.scroll = self.interface.final_MP
+        self.buttons = [] 
+        self.scroll += self.scroll_pressionado * self.velocidade_scroll
+        if isinstance(self.clique, tuple):
+            clique = list(pygame.mouse.get_pos())
+            clique[1] = clique[1] - self.scroll
+            
+            self.scroll += clique[1] - self.clique[1]
+            
+        if self.scroll <= self.final_MP:
+            self.scroll = self.final_MP
             self.scroll_pressionado = 0
             
-        if self.interface.scroll >= ALTURA_BLOCO:
-            self.interface.scroll = ALTURA_BLOCO
+        if self.scroll >= ALTURA_BLOCO:
+            self.scroll = ALTURA_BLOCO
             self.scroll_pressionado = 0
+         
     
-
-class EstadoMemorias(Estado):
-
+    
     def imprimir(self):
-        self.interface.imprimir_MP()        
-        self.interface.imprimir_MS()        
-        self.interface.imprimir_TP(self.interface.processo_selecionado)
+        self.imprimir_MP()        
+        self.imprimir_MS()        
+        self.imprimir_TP(self.processo_selecionado)
     
+
+    def game_loop(self):
+        while 1:
+            self.clock.tick(60)
+            self.eventos()       
+            self.update()
+            self.screen.fill(PRETO)
+            self.imprimir()
+            pygame.display.flip()
+    
+        
+
 
 PygameInterface().game_loop()
