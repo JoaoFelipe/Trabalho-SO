@@ -9,22 +9,22 @@ PRETO = 0, 0, 0
 BRANCO = 255, 255, 255
 AZUL = 0, 0, 255
 
-DIMENSOES = 800, 600
+DIMENSOES = WIDTH, HEIGHT = 800, 600
 TITULO = 'Simulador'
 
-ALTURA_BLOCO = 30
-LARGURA_BLOCO = 140
+ALTURA_BLOCO = int(0.05 * HEIGHT)
+LARGURA_BLOCO = int(0.175 * WIDTH)
 
-ALTURA_ENTRADA_TP = 30
-LARGURA_ENTRADA_TP = 240
+ALTURA_ENTRADA_TP = int(0.05 * HEIGHT)
+LARGURA_ENTRADA_TP = int(0.3 * WIDTH)
 
 ESPACO_BIT = ALTURA_ENTRADA_TP
 
 
-MP_TEXT_X = 20
-POSICAO_MP = 40
-POSICAO_MS = 620
-POSICAO_TP = 280
+MP_TEXT_X = int(0.025 * WIDTH)
+POSICAO_MP = int(0.05 * WIDTH)
+POSICAO_MS = int(0.775 * WIDTH)
+POSICAO_TP = int(0.35 * WIDTH)
 
 
 class Button(namedtuple('Button', ['x', 'y', 'width', 'height', 'function'])):
@@ -46,10 +46,12 @@ def calcular_cor(num, processos):
     numb = to_bin(num)
     numb = "0"*(len(to_bin(processos)) - len(numb)) + numb
     for l in numb:
-        cor[index] = str(int(cor[index]) & int(l))
+        cor[index] = str(int(cor[index] == l))
         index = index + 8
         if index >= 24:
-            index = index - 23
+            index -= 23
+            if index >= 8:
+                index -= 8
         
     corb = ''.join(cor)        
     return (int(corb[0:8],2), int(corb[8:16],2), int(corb[16:24],2))
