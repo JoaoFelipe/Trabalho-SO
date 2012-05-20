@@ -12,7 +12,8 @@ var
 sdist
 develop-eggs
 .installed.cfg
-
+*.sublime-project
+*.sublime-workspace
 # Installer logs
 pip-log.txt
 
