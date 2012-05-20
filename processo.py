@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
-from math import ceil
 from collections import namedtuple
-from utils import EqualByAttributes
+from utils import EqualByAttributes, divisao_inteira_superior
 
 
-def divisao_inteira_superior(x,y):
-    return int(ceil((1.0*x)/y))
+
 
 class Pagina(namedtuple('Pagina', ['processo', 'numero', 'tamanho'])):
     def __str__(self):

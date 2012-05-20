@@ -34,7 +34,7 @@ class Simulador(object):
         if sum(processos) > memoria_secundaria:
             raise TamanhoMemoriaSecundariaException
             
-        self.gerenciador_memoria = gerenciador_memoria(self)
+        
         self.tamanho_pagina = pagina
         self.tamanho_endereco_logico = endereco_logico
         self.tamanho_memoria_fisica = memoria_fisica
@@ -45,9 +45,9 @@ class Simulador(object):
         
         # Monta a lista de quadros - representa a memoria principal
         self.quadros = [None] * (memoria_fisica / pagina)
-        
+        self.gerenciador_memoria = gerenciador_memoria(self)
         self.gerenciador_memoria.alocacao_inicial()
-        
+            
 
     def numero_bits_pagina(self):
         return int(log(self.tamanho_pagina,2))

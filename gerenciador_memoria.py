@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from mensagem import QuadroModificadoMensagem
 class GerenciadorMemoria(object):
     
     def __init__(self, simulador):
@@ -15,7 +16,9 @@ class GerenciadorMemoria(object):
         processo = self.simulador.processos[num_processo]
         num_pagina = self.descobre_pagina(endereco)
         pagina = processo.paginas[num_pagina]
-        entrada_pagina = processo.tabela_paginas[num_pagina]
+        entrada_tp = processo.tabela_paginas[num_pagina]
+        # se página foi modificada, seta bit M para 1
+        self.continua_acesso(processo, pagina, entrada_tp)
         if tipo == "W": 
-            entrada_pagina.modificado = 1
-        self.continua_acesso(processo, pagina, entrada_pagina)
+            entrada_tp.modificado = 1
+            self.simulador.mudancas.append(QuadroModificadoMensagem(pagina))

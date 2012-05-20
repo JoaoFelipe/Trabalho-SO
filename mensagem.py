@@ -31,3 +31,10 @@ class CarregadaMensagem(object):
 
     def __unicode__(self):
         return u"Página %s do processo %s foi carregada na memória principal" % (self.pagina.numero, self.pagina.processo.identificador)
+
+class QuadroModificadoMensagem(object):
+    def __init__(self, pagina):
+        self.pagina = pagina
+
+    def __unicode__(self):
+        return u"Quadro com página %s do processo %s foi modificado" % (self.pagina.numero, self.pagina.processo.identificador)
