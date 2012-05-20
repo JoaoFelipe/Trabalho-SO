@@ -27,6 +27,7 @@ POSICAO_MP = int(0.05 * WIDTH)
 POSICAO_MS = int(0.775 * WIDTH)
 POSICAO_TP = int(0.35 * WIDTH)
 
+TAMANHO_MENSAGEM = int(0.1 * HEIGHT)
 
 class Button(namedtuple('Button', ['x', 'y', 'width', 'height', 'function'])):
 
@@ -60,7 +61,7 @@ def calcular_cor(num, processos):
 
 class PygameInterface(object):
 
-    def __init__(self):
+    def __init__(self,simulador):
         if not pygame.font: print 'Fontes desabilitadas'
         pygame.init()
         self.width, self.height = DIMENSOES 
@@ -72,17 +73,15 @@ class PygameInterface(object):
         self.buttons = []
         self.clique = []
 
-        self.simulador = Simulador(1024, 32, 8*1024, 100*1024, [2000, 1000, 3000, 5000, 7000, 2000, 8000])
-        self.simulador.quadros[0] = self.simulador.processos[0].paginas[0]
-        self.simulador.processos[0].tabela_paginas[0].presente = 1
-        self.simulador.processos[0].tabela_paginas[0].quadro = 0
+        self.simulador = simulador
         
         self.processo_selecionado = self.simulador.processos[0]
 
 
         # Usado para calcular o scroll máximo
         self.final_MP = -max(self.imprimir_MP(), self.imprimir_MS()) + self.height    
-        
+        self.final_TP = self.imprimir_TP(max(self.simulador.processos, key=lambda x:len(x.paginas)))
+
         self.velocidade_scroll = 10
         self.scroll_pressionado = 0
 
@@ -169,6 +168,27 @@ class PygameInterface(object):
             y += ALTURA_ENTRADA_TP
         return y + ALTURA_ENTRADA_TP
 
+    def imprimir_mensagem(self):
+        rect = pygame.Rect(0, HEIGHT-TAMANHO_MENSAGEM, WIDTH, TAMANHO_MENSAGEM)
+        pygame.draw.rect(self.screen, BRANCO, rect, 0)
+            
+        posicao = HEIGHT-TAMANHO_MENSAGEM + 5
+        for mudanca in self.simulador.mudancas:
+            posicao += 12
+            text = self.font.render(unicode(mudanca), 1, PRETO)
+            textrect = text.get_rect(x=12,centery=posicao)
+            self.screen.blit(text, textrect)
+
+#        posicao += 12
+#        for i, linha in enumerate(self.simulador.linhas):
+#            posicao += 12
+#            text = self.font.render(linha + ('*' if self.simulador.ponteiro == i else ''), 1, BRANCO)
+#            textrect = text.get_rect(centerx=POSICAO_TP + LARGURA_ENTRADA_TP / 2,centery=self.scroll + self.final_TP + ALTURA_ENTRADA_TP / 2 + posicao)
+#            self.screen.blit(text, textrect)
+        
+
+
+
     def _set_processo_selecionado(self, processo):
         self.processo_selecionado = processo
 
@@ -184,7 +204,10 @@ class PygameInterface(object):
                 if event.key == K_DOWN:
                     self.scroll_pressionado = -1     
             elif event.type == KEYUP:
+                if event.key == K_RIGHT:
+                    self.simulador.next()
                 self.scroll_pressionado = 0
+
             elif event.type == MOUSEBUTTONDOWN:    
                 clique = list(pygame.mouse.get_pos())
                 clique[1] = clique[1] - self.scroll
@@ -223,7 +246,7 @@ class PygameInterface(object):
         self.imprimir_MP()        
         self.imprimir_MS()        
         self.imprimir_TP(self.processo_selecionado)
-    
+        self.imprimir_mensagem()
 
     def game_loop(self):
         while 1:
@@ -236,5 +259,3 @@ class PygameInterface(object):
     
         
 
-
-PygameInterface().game_loop()

@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 
+from math import log
 from processo import Processo
 from gerenciador_memoria import GerenciadorMemoria
+from mensagem import EnderecoMensagem, TerminouMensagem
+
 
 class TamanhoMemoriaFisicaException(Exception):
     def __str__(self):
@@ -22,7 +25,8 @@ class EnderecoLogicoInvalidoException(Exception):
 
 class Simulador(object):
 
-    def __init__(self, pagina, endereco_logico, memoria_fisica, memoria_secundaria, processos=[], gerenciador_memoria=GerenciadorMemoria):
+    def __init__(self, pagina, endereco_logico, memoria_fisica, memoria_secundaria, processos, gerenciador_memoria=GerenciadorMemoria):
+        self.ler_arquivo_de_processos()
         #Verifica se tamanho da memória física é multiplo do tamanho da página 
         if memoria_fisica % pagina != 0:
             raise TamanhoMemoriaFisicaException
@@ -35,7 +39,7 @@ class Simulador(object):
         self.tamanho_endereco_logico = endereco_logico
         self.tamanho_memoria_fisica = memoria_fisica
         self.tamanho_memoria_secundaria = memoria_secundaria
-        
+        self.mudancas = []
         # Monta lista de processos pelos tamanhos dos processos - Pode representar a memoria secundaria
         self.processos = [Processo(i, processos[i], pagina) for i in xrange(len(processos))]
         
@@ -44,6 +48,10 @@ class Simulador(object):
         
         self.gerenciador_memoria.alocacao_inicial()
         
+
+    def numero_bits_pagina(self):
+        return int(log(self.tamanho_pagina,2))
+
     def acessar(self, linha):
         processo, tipo, endereco = linha.split(' ')
         
@@ -62,3 +70,19 @@ class Simulador(object):
             raise EnderecoLogicoInvalidoException(endereco)
             
         return self.gerenciador_memoria.acessar(num_processo, tipo, endereco)
+
+    def ler_arquivo_de_processos(self):
+        self.linhas = []
+        self.ponteiro = -1
+        with open("processos") as arquivo:
+            for linha in arquivo:
+                self.linhas.append(linha.split('\n')[0])
+
+    def next(self):
+        self.ponteiro += 1
+        if self.ponteiro < len(self.linhas):
+            self.mudancas = [EnderecoMensagem(self.linhas[self.ponteiro])]
+            self.acessar(self.linhas[self.ponteiro])
+        else:
+            self.mudancas = [TerminouMensagem()]
+
