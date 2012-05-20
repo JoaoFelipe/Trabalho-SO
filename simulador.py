@@ -22,28 +22,43 @@ class EnderecoLogicoInvalidoException(Exception):
 
 class Simulador(object):
 
-    def __init__(self, pagina, endereco_logico, memoria_fisica, memoria_secundaria, processos, gerenciador_memoria=GerenciadorMemoria):
+    def __init__(self, pagina, endereco_logico, memoria_fisica, memoria_secundaria, processos=[], gerenciador_memoria=GerenciadorMemoria):
+        #Verifica se tamanho da memória física é multiplo do tamanho da página 
         if memoria_fisica % pagina != 0:
             raise TamanhoMemoriaFisicaException
+        #Verifica se memória secundária possui espaço suficiente para guardar processos
         if sum(processos) > memoria_secundaria:
             raise TamanhoMemoriaSecundariaException
+            
         self.gerenciador_memoria = gerenciador_memoria(self)
         self.tamanho_pagina = pagina
         self.tamanho_endereco_logico = endereco_logico
         self.tamanho_memoria_fisica = memoria_fisica
         self.tamanho_memoria_secundaria = memoria_secundaria
+        
         # Monta lista de processos pelos tamanhos dos processos - Pode representar a memoria secundaria
         self.processos = [Processo(i, processos[i], pagina) for i in xrange(len(processos))]
+        
         # Monta a lista de quadros - representa a memoria principal
         self.quadros = [None] * (memoria_fisica / pagina)
+        
         self.gerenciador_memoria.alocacao_inicial()
         
     def acessar(self, linha):
         processo, tipo, endereco = linha.split(' ')
-        num_processo = int(processo[1:]) #Tirar o P
+        
+        #Tirar o P
+        num_processo = int(processo[1:]) 
+        
+        # Transformar em binario se for da forma (X)2
         if '2' in endereco:
-            endereco = bin(int(endereco[1:-2]))[2:] # Transformar em binario se for da forma (X)2
-        endereco = "0"*(self.tamanho_endereco_logico-len(endereco)) + endereco #Completar bits de endereco
+            endereco = bin(int(endereco[1:-2]))[2:] 
+        
+        #Completar bits de endereco
+        endereco = "0"*(self.tamanho_endereco_logico-len(endereco)) + endereco 
+        
+        # Verifica se tamanho do endereço é maior do que tamanho do endereço lógico
         if len(endereco) > self.tamanho_endereco_logico:
             raise EnderecoLogicoInvalidoException(endereco)
+            
         return self.gerenciador_memoria.acessar(num_processo, tipo, endereco)

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 class GerenciadorMemoria(object):
     
     def __init__(self, simulador):

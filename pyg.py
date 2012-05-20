@@ -31,14 +31,13 @@ POSICAO_TP = int(0.35 * WIDTH)
 class Button(namedtuple('Button', ['x', 'y', 'width', 'height', 'function'])):
 
     def __contains__(self, clique):
+        # Verifica se clique acertou o botão
         return self.x <= clique[0] <= self.x+self.width and self.y <= clique[1] <= self.y+self.height 
 
 
 
+#Faz cores aleatórias para cada processo
 def calcular_cor(num, processos):
-    #tamanho = (255*(256**2) + 255*256 + 255) / (len(processos)+2)
-    #cor = tamanho*(num+1)
-    #corb = bin(cor)[2:]
     to_bin = lambda x: bin(x)[2:]
 
     cor = list(to_bin(int('FFFFFF', 16)))
@@ -66,7 +65,7 @@ class PygameInterface(object):
         pygame.init()
         self.width, self.height = DIMENSOES 
         self.screen = pygame.display.set_mode(DIMENSOES)
-        pygame.display.set_caption('Titulo')
+        pygame.display.set_caption(TITULO)
         self.clock = pygame.time.Clock()
         self.font = pygame.font.Font(None, 20)
         self.scroll = ALTURA_BLOCO
@@ -79,6 +78,9 @@ class PygameInterface(object):
         self.simulador.processos[0].tabela_paginas[0].quadro = 0
         
         self.processo_selecionado = self.simulador.processos[0]
+
+
+        # Usado para calcular o scroll máximo
         self.final_MP = -max(self.imprimir_MP(), self.imprimir_MS()) + self.height    
         
         self.velocidade_scroll = 10
@@ -115,7 +117,6 @@ class PygameInterface(object):
         text = self.font.render(str(entrada.quadro), 1, BRANCO)
         textrect = text.get_rect(center=rect.center)
         self.screen.blit(text, textrect)     
-        #pygame.draw.rect(self.screen, AZUL, rect, 1)    
         
     def imprimir_numero(self, y, num):
         centerx = MP_TEXT_X
