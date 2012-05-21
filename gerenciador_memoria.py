@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from mensagem import QuadroModificadoMensagem
 from mensagem import CarregadaMensagem, ModificadaMensagem
+from utils import teto_inteiro
 
 
 class GerenciadorMemoria(object):
@@ -65,3 +66,58 @@ class GerenciadorMemoria(object):
         entrada_tp.presente = 0
         entrada_tp.modificado = 0
         self.simulador.quadros[quadro] = None
+
+    def suspender_processo(self, processo):
+        """
+        Suspende processo, desalocando todos seus blocos da MP
+        """
+        for quadro in processo.quadros:
+            self.desalocar_quadro(quadro)
+
+    def alocar_paginas_por_localidade(self, processo, pagina_inicial, quantidade):
+        """
+        Aloca 'quantidade' páginas na MP, seguindo o principio da localidade
+        Para pagina inicial 8, em um processo com 11 paginas[0..10]
+        alocando 5 na MP, o resultado será:
+            8, 9, 10, 7, 6
+        No FIFO local, os quadros em que serão alocadas estas páginas serão percorridos nesta ordem
+        """
+        quadros_inseridos = []
+        # não é possível alocar mais quadros do que esta disponivel na MP
+        quantidade = min(quantidade, self.simulador.quadros.count(None))
+
+        base = atual = pagina_inicial
+        restante = quantidade
+        incremento = 1
+        while restante > 0 and atual >= 0:
+            # procura quadro vazio na MP e coloca pagina na MP
+            quadro = self.simulador.quadros.index(None)
+            pagina = processo.paginas[atual]
+            if not pagina in self.simulador.quadros:
+                self.alocar_pagina_no_quadro(quadro, pagina)
+                quadros_inseridos.append(quadro)
+                restante -= 1
+                # se chegar no limite do numero de paginas do processo
+                # inverte o loop a partir da pagina acessada
+            atual += incremento
+            if atual >= len(processo.paginas):
+                incremento = -1
+                atual = base - 1
+        return quadros_inseridos
+
+
+class GerenciadorLocal(object):
+
+    def quadros_por_processo(self):
+        """
+        Calcula quantidade de quadros por processo,
+        Tomando como base o espaço disponível em MP e o número
+        de páginas dos dos processos a serem executados
+
+        razao = (numero de quadros da MP) / (total de paginas da MS)
+        numero de quadros para Px = teto[razao * (numero de páginas de Px)]
+        """
+        paginas_de_cada_processo = [len(processo.paginas) for processo in self.simulador.processos]
+        razao = len(self.simulador.quadros) / (sum(paginas_de_cada_processo) + .0)
+        quadros_por_processo = [teto_inteiro(razao * numero_paginas) for numero_paginas in paginas_de_cada_processo]
+        return quadros_por_processo
