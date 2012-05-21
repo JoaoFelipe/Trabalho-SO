@@ -1,6 +1,6 @@
 import unittest
-from simulador import Simulador
-from mensagem import QuadroModificadoMensagem, CarregadaMensagem, ModificadaMensagem
+from base.simulador import Simulador
+from base.mensagem import QuadroModificadoMensagem, CarregadaMensagem, ModificadaMensagem
 
 
 class TestGerenciadorMemoria(unittest.TestCase):
@@ -312,3 +312,6 @@ class TestGerenciadorMemoria(unittest.TestCase):
         ]
         self.assertEqual(memoria, simulador.quadros)
         self.assertEqual([p2, p0], ordem)
+
+if __name__ == '__main__':
+    unittest.main()

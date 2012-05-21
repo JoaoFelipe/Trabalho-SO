@@ -1,9 +1,7 @@
-from fifo_global import FifoGlobal
-from fifo_local_variavel import FifoLocalVariavel
-from fifo_local_fixo import FifoLocalFixo
+from base.pyg import PygameInterface
+from base.simulador import Simulador
 
-from pyg import PygameInterface
-from simulador import Simulador
+from gerenciadores import *
 
 if __name__ == '__main__':
     tamanhos = {
@@ -14,5 +12,8 @@ if __name__ == '__main__':
         'processos': [2000, 2000, 3000, 5000, 7000, 2000, 8000, 9000],
     }
 
-    simulador = Simulador(gerenciador_memoria=FifoLocalVariavel, **tamanhos)
+    gerenciador = FifoGlobal
+    # gerenciador = FifoLocalFixo
+    # gerenciador = FifoLocalVariavel
+    simulador = Simulador(gerenciador_memoria=gerenciador, **tamanhos)
     PygameInterface(simulador).game_loop()

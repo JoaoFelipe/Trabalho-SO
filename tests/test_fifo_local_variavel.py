@@ -1,7 +1,7 @@
 import unittest
-from simulador import Simulador
-from fifo_local_variavel import FifoLocalVariavel
-from mensagem import CarregadaMensagem, PresenteMensagem
+from base.simulador import Simulador
+from base.mensagem import CarregadaMensagem, PresenteMensagem
+from gerenciadores.fifo_local_variavel import FifoLocalVariavel
 
 
 class TestFifoLocalVariavel(unittest.TestCase):
@@ -318,3 +318,6 @@ class TestFifoLocalVariavel(unittest.TestCase):
         self.assertEqual([], p1.conjunto_residente)
         self.assertEqual([], p0.conjunto_residente)
         self.assertEqual(0, p3.ponteiro)
+
+if __name__ == '__main__':
+    unittest.main()

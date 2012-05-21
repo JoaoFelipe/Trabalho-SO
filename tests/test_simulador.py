@@ -1,7 +1,7 @@
 import unittest
-from simulador import Simulador, TamanhoMemoriaFisicaException
-from simulador import TamanhoMemoriaSecundariaException, EnderecoLogicoInvalidoException
-from gerenciador_memoria import GerenciadorMemoria
+from base.simulador import Simulador, TamanhoMemoriaFisicaException
+from base.simulador import TamanhoMemoriaSecundariaException, EnderecoLogicoInvalidoException
+from gerenciadores.gerenciador_memoria import GerenciadorMemoria
 
 
 class GerenciadorTest(GerenciadorMemoria):

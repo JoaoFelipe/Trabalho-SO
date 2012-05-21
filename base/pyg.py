@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 import sys
 import pygame
-from pygame.locals import *
-from processo import EntradaTP
 from collections import namedtuple
 from functools import partial
+from pygame.locals import *
+from base.processo import EntradaTP
 
 PRETO = 0, 0, 0
 BRANCO = 255, 255, 255

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-from mensagem import QuadroModificadoMensagem
-from mensagem import CarregadaMensagem, ModificadaMensagem
-from utils import teto_inteiro
+from base.mensagem import QuadroModificadoMensagem
+from base.mensagem import CarregadaMensagem, ModificadaMensagem
+from base.utils import teto_inteiro
 
 
 class GerenciadorMemoria(object):

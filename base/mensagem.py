@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from utils import EqualByUnicode
+from base.utils import EqualByUnicode
 
 
 class EnderecoMensagem(EqualByUnicode):

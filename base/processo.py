@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from collections import namedtuple
-from utils import EqualByAttributes, divisao_inteira_superior
+from base.utils import EqualByAttributes, divisao_inteira_superior
 
 
 class Pagina(namedtuple('Pagina', ['processo', 'numero', 'tamanho'])):

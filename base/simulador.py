@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 from math import log
-from processo import Processo
-from gerenciador_memoria import GerenciadorMemoria
-from mensagem import EnderecoMensagem, TerminouMensagem
+from base.processo import Processo
+from base.mensagem import EnderecoMensagem, TerminouMensagem
+from gerenciadores.gerenciador_memoria import GerenciadorMemoria
 
 
 class TamanhoMemoriaFisicaException(Exception):

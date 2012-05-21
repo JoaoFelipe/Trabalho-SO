@@ -1,7 +1,7 @@
 import unittest
-from simulador import Simulador
-from fifo_local_fixo import FifoLocalFixo
-from mensagem import CarregadaMensagem, PresenteMensagem, ModificadaMensagem
+from base.simulador import Simulador
+from base.mensagem import CarregadaMensagem, PresenteMensagem, ModificadaMensagem
+from gerenciadores.fifo_local_fixo import FifoLocalFixo
 
 
 class TestFifoLocalFixo(unittest.TestCase):
@@ -85,3 +85,6 @@ class TestFifoLocalFixo(unittest.TestCase):
         self.assertEqual([], p1.conjunto_residente)
         self.assertEqual([], p0.conjunto_residente)
         self.assertEqual(0, p2.ponteiro)
+
+if __name__ == '__main__':
+    unittest.main()

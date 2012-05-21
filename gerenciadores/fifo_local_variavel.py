@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-from fifo_local import FifoLocal
-from mensagem import PresenteMensagem
+from base.mensagem import PresenteMensagem
+from gerenciadores.fifo_local import FifoLocal
 
 VERIFICAO = 4
 RATIO_MIN = 0.3

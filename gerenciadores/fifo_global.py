@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-from gerenciador_memoria import GerenciadorMemoria
-from mensagem import PresenteMensagem
+from gerenciadores.gerenciador_memoria import GerenciadorMemoria
+from base.mensagem import PresenteMensagem
 
 
 class FifoGlobal(GerenciadorMemoria):

@@ -1,7 +1,7 @@
 import unittest
-from simulador import Simulador
-from fifo_global import FifoGlobal
-from mensagem import CarregadaMensagem, PresenteMensagem, ModificadaMensagem
+from base.simulador import Simulador
+from base.mensagem import CarregadaMensagem, PresenteMensagem, ModificadaMensagem
+from gerenciadores.fifo_global import FifoGlobal
 
 
 class TestFifoGlobal(unittest.TestCase):
@@ -86,3 +86,6 @@ class TestFifoGlobal(unittest.TestCase):
         p0_pag6 = simulador.processos[0].paginas[6]
         self.assertIn(CarregadaMensagem(p0_pag6), simulador.mudancas)
         self.assertIn(ModificadaMensagem(p0_pag0), simulador.mudancas)
+
+if __name__ == '__main__':
+    unittest.main()

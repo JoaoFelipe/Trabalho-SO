@@ -1,6 +1,6 @@
 import unittest
-from simulador import Simulador
-from fifo_local import FifoLocal
+from base.simulador import Simulador
+from gerenciadores.fifo_local import FifoLocal
 
 
 class TestFifoLocal(unittest.TestCase):
@@ -118,3 +118,6 @@ class TestFifoLocal(unittest.TestCase):
         self.assertEqual([0, 1], p0.conjunto_residente)
         self.assertEqual(0, p0.ponteiro)
         self.assertEqual(1, len(gm.processos_na_mp))
+
+if __name__ == '__main__':
+    unittest.main()

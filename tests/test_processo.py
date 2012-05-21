@@ -1,5 +1,5 @@
 import unittest
-from processo import Processo, EntradaTP
+from base.processo import Processo, EntradaTP
 
 
 class TestProcesso(unittest.TestCase):

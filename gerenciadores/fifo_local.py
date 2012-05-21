@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from collections import deque as queue
-from gerenciador_memoria import GerenciadorMemoria, GerenciadorLocal
+from gerenciadores.gerenciador_memoria import GerenciadorMemoria, GerenciadorLocal
 
 
 class FifoLocal(GerenciadorMemoria, GerenciadorLocal):

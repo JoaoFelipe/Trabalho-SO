@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-from mensagem import PresenteMensagem
-from fifo_local import FifoLocal
+from base.mensagem import PresenteMensagem
+from gerenciadores.fifo_local import FifoLocal
 
 
 class FifoLocalFixo(FifoLocal):
