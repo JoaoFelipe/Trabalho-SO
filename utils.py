@@ -1,6 +1,14 @@
 from math import ceil
 
 
+def teto_inteiro(x):
+    return int(ceil(x))
+
+
+def divisao_inteira_superior(x, y):
+    return int(ceil((1.0 * x) / y))
+
+
 class dotdict(dict):
     def __getattr__(self, attr):
         return self.get(attr, None)
@@ -16,11 +24,3 @@ class EqualByAttributes(object):
 class EqualByUnicode(object):
     def __eq__(self, outro):
         return unicode(self) == unicode(outro)
-
-
-def teto_inteiro(x):
-    return int(ceil(x))
-
-
-def divisao_inteira_superior(x, y):
-    return int(ceil((1.0 * x) / y))

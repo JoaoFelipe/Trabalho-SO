@@ -105,6 +105,40 @@ class GerenciadorMemoria(object):
                 atual = base - 1
         return quadros_inseridos
 
+    def alocar_n_paginas(self, processo, pagina_inicial, quantidade, ordem=None):
+        """
+        Suspende processos para liberar espaço suficiente para alocar 'quantidade' páginas
+        """
+        # se ordem não foi definida, pega uma ordem qualquer
+        if ordem is None:
+            ordem = list(set(pagina.processo for pagina in self.simulador.quadros if pagina is not None))
+        # não é possível alocar mais quadros do que o tamanho da MP
+        quantidade = min(quantidade, len(self.simulador.quadros))
+
+        reserva = []
+        # enquanto quantidade de quadros disponíveis na MP não é compatível com
+        # numero de quadros necessitados pelo processo
+        while self.simulador.quadros.count(None) < quantidade and ordem:
+            # seleciona processo para suspender
+            esvaziar_processo = ordem.pop()
+            if esvaziar_processo != processo:
+                self.suspender_processo(esvaziar_processo)
+            else:
+                reserva.append(esvaziar_processo)
+
+        # Restaura ordem da fila caso algum processo não tenha sido suspenso
+        while ordem:
+            reserva.append(ordem.pop())
+        while reserva:
+            ordem.append(reserva.pop())
+
+        # carrega conjunto residente fixo para a memória
+        self.alocar_paginas_por_localidade(
+            processo,
+            pagina_inicial,
+            quantidade
+        )
+
 
 class GerenciadorLocal(object):
 

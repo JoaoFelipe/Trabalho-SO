@@ -45,3 +45,8 @@ class Processo(object):
 
     def estaSuspenso(self):
         return len(self.quadros) == 0
+
+    def add_method(self, method, name=None):
+        if name is None:
+            name = method.func_name
+        setattr(self.__class__, name, method)

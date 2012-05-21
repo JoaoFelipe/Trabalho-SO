@@ -1,237 +1,87 @@
 # -*- coding: utf-8 -*-
-from gerenciador_memoria import GerenciadorMemoria
-from mensagem import ModificadaMensagem, CarregadaMensagem, PresenteMensagem
-from utils import teto_inteiro
+from fifo_local import FifoLocal
+from mensagem import PresenteMensagem
 
 VERIFICAO = 4
 RATIO_MIN = 0.3
 RATIO_MAX = 0.7
+RESTO = 0
 
-class FifoLocalVariavel(GerenciadorMemoria):
+
+class FifoLocalVariavel(FifoLocal):
 
     def __init__(self, simulador):
-        super(FifoLocalVariavel,self).__init__(simulador)
-        self.processos_na_mp = []
-        self.ponteiro = [-1]*len(self.simulador.processos)
-        self.quadros_processo = self.quadros_por_processo()
-        self.quadros_alocados_por_processo = []
-        for i in xrange(len(self.simulador.processos)):
-            self.quadros_alocados_por_processo.append([])
-        self.falhas = [0]*len(self.simulador.processos)
-        self.acessos = [0]*len(self.simulador.processos)
+        super(FifoLocalVariavel, self).__init__(simulador)
+        for processo in simulador.processos:
+            processo.falhas = 0
+            processo.acessos = 0
+            processo.add_method(lambda s: 1.0 * s.falhas / s.acessos, "ratio")
 
+    def ajusta_processo_na_mp(self, processo, pagina):
+        """
+        Verifica o ratio do processo que está na MP:
+        se < RATIO_MIN: diminui conjunto residente do processo
+          desalocando um pelo FIFO
+        se > RATIO_MAX: aumenta conjunto residente do processo
+          carrega uma pagina proxima da pagina acessada (ou a propria)
+          se for necessario, suspende algum processos
+        """
+        alocou = False
+        if processo.acessos % VERIFICAO == RESTO:
+            if processo.ratio() < RATIO_MIN and processo.maximo_quadros > 1:
+                processo.maximo_quadros -= 1
+                vazio = self.retira_pagina_fifo(processo)
+                processo.conjunto_residente.remove(vazio)
+                # verifica se página acessada estava no quadro removido
+                if pagina.entrada_tp.quadro == vazio:
+                    self.substitui_pagina_fifo(processo, pagina)
+                    alocou = True
+            elif processo.ratio() > RATIO_MAX and processo.maximo_quadros < len(self.simulador.quadros):
+                processo.maximo_quadros += 1
+                self.alocar_n_paginas(
+                    processo,
+                    pagina.numero,
+                    1,
+                    ordem=self.processos_na_mp,
+                )
+                alocou = True
+        return alocou
 
-    def quadros_por_processo(self):
-        # cálculo da quntidade de quadros por processo, tomando como base 
-        # o espaço disponível em MP e numero de páginas dos processos a serem executados
-        # razao = (numero de quadros da MP) / (total de paginas da MS)
-        # numero de quadros Px = teto[razao * (numero de páginas de Px)] 
-        paginas_de_cada_processo = [len(processo.paginas) for processo in self.simulador.processos]
-        razao = len(self.simulador.quadros)/(sum(paginas_de_cada_processo)+.0)
-        quadros_por_processo = [teto_inteiro(razao*numero_paginas) for numero_paginas in paginas_de_cada_processo]
-        return quadros_por_processo
-
-    def log(self):
-        print self.processos_na_mp 
-        print self.ponteiro
-        print self.quadros_processo 
-        print self.quadros_alocados_por_processo 
-        print self.falhas
-        print self.acessos 
-        print [1.0*self.falhas[i]/self.acessos[i] if self.acessos[i] != 0 else float('inf') for i in range(len(self.acessos))]
-
+    def ajusta_processo_na_ms(self, processo):
+        """
+        Verifica o ratio do processo que está na MS:
+        se < RATIO_MIN: diminui numero maximo_quadros do processo
+        se > RATIO_MAX: aumenta numero maximo_quadros do processo
+        """
+        if processo.acessos % VERIFICAO == RESTO:
+            if processo.ratio() < RATIO_MIN and processo.maximo_quadros > 1:
+                processo.maximo_quadros -= 1
+            elif processo.ratio() > RATIO_MAX and processo.maximo_quadros < len(self.simulador.quadros):
+                processo.maximo_quadros += 1
 
     def continua_acesso(self, processo, pagina, entrada_tp):
-        self.log()
-        self.acessos[processo.identificador] += 1
-        ponteiro = self.ponteiro[processo.identificador]
-        if entrada_tp.presente:
-            # página já está na MP, apenas acessa
-            self.simulador.mudancas.append(PresenteMensagem(pagina))
-            if self.acessos[processo.identificador] % VERIFICAO == 1:
-                ratio = 1.0*self.falhas[processo.identificador]/self.acessos[processo.identificador]
-                if ratio < RATIO_MIN and self.quadros_processo[processo.identificador] > 1:
-                    self.quadros_processo[processo.identificador] -= 1
-                    # seleciona quadro do ponteiro para esvaziar
-                    # avança ponteiro (e volta para 0 se passar do numero de quadros)
-                    esvaziar = self.quadros_alocados_por_processo[processo.identificador].pop(ponteiro)
-                    self.ponteiro[processo.identificador] = (ponteiro + 1) % self.quadros_processo[processo.identificador]
-                    pagina_retirada = self.simulador.quadros[esvaziar]
-                    entrada_tp_retirada = pagina_retirada.processo.tabela_paginas[pagina_retirada.numero]
-                    # se for modificada, salva na memória secundária
-                    if entrada_tp_retirada.modificado:
-                        self.simulador.mudancas.append(ModificadaMensagem(pagina_retirada))
-                    # reseta informacoes da página retirada 
-                    entrada_tp_retirada.presente = 0
-                    entrada_tp_retirada.modificado = 0
-                    self.simulador.quadros[esvaziar] = None
-                elif ratio > RATIO_MAX and self.quadros_processo[processo.identificador] < len(self.simulador.quadros):
-                    self.quadros_processo[processo.identificador] += 1
-                    # enquanto quantidade de quadros disponíveis na MP não é compatível com
-                    # numero de quadros necessitados pelo processo
-                    if not self.simulador.quadros.count(None):
-                        # seleciona processo para suspender
-                        esvaziar_processo = self.processos_na_mp.pop(0)
-                        # percorre quadros alocados para o processo
-                        # desaloca quadro da MP
-                        for esvaziar in self.quadros_alocados_por_processo[esvaziar_processo.identificador]:
-                            pagina_retirada = self.simulador.quadros[esvaziar]
-                            entrada_tp_retirada = pagina_retirada.processo.tabela_paginas[pagina_retirada.numero]
-                            # se for modificada, salva na memória secundária
-                            if entrada_tp_retirada.modificado:
-                                self.simulador.mudancas.append(ModificadaMensagem(pagina_retirada))
-                            # reseta informacoes da página retirada 
-                            entrada_tp_retirada.presente = 0
-                            entrada_tp_retirada.modificado = 0
-                            self.simulador.quadros[esvaziar] = None
-                        self.quadros_alocados_por_processo[esvaziar_processo.identificador] = []
-                        self.ponteiro[esvaziar_processo.identificador] = -1
-                    vazio = self.simulador.quadros.index(None) 
-                    numero_base = pagina.numero
-                    numero_pagina_atual = pagina.numero
-                    # descobre numero de paginas a serem carregadas na MP
-                    achou = False
-                    incremento = 1
-                    while not achou:
-                        entrada_tp = processo.tabela_paginas[numero_pagina_atual]
-                        pagina = processo.paginas[numero_pagina_atual]
-                        if pagina in self.simulador.quadros:
-                            numero_pagina_atual += incremento
-                            # se chegar no limite do numero de paginas do processo
-                            # inverte o loop a partir da pagina acessada
-                            if numero_pagina_atual >= len(processo.paginas):
-                                incremento = -1
-                                numero_pagina_atual = numero_base - 1
-                        else:
-                            achou = True
+        processo.acessos += 1
+        if not entrada_tp.presente:
+            processo.falhas += 1
+        if not processo.estaSuspenso():
 
-                    entrada_tp.quadro = vazio
-                    entrada_tp.presente = 1
-                    self.simulador.mudancas.append(CarregadaMensagem(pagina))
-                    self.simulador.quadros[vazio] = pagina
-                    self.quadros_alocados_por_processo[processo.identificador].append(vazio)
-                    numero_pagina_atual += incremento
-                        
-                  
-        elif ponteiro != -1:
-            # se processo está na MP
-            vazio = None
-            self.falhas[processo.identificador] += 1
-            if self.acessos[processo.identificador] % VERIFICAO == 1:
-                ratio = 1.0*self.falhas[processo.identificador]/self.acessos[processo.identificador]
-                if ratio < RATIO_MIN and self.quadros_processo[processo.identificador] > 1:
-                    self.quadros_processo[processo.identificador] -= 1
-                    # seleciona quadro do ponteiro para esvaziar
-                    # avança ponteiro (e volta para 0 se passar do numero de quadros)
-                    esvaziar = self.quadros_alocados_por_processo[processo.identificador].pop(ponteiro)
-                    self.ponteiro[processo.identificador] = (ponteiro + 1) % self.quadros_processo[processo.identificador]
-                    pagina_retirada = self.simulador.quadros[esvaziar]
-                    entrada_tp_retirada = pagina_retirada.processo.tabela_paginas[pagina_retirada.numero]
-                    # se for modificada, salva na memória secundária
-                    if entrada_tp_retirada.modificado:
-                        self.simulador.mudancas.append(ModificadaMensagem(pagina_retirada))
-                    # reseta informacoes da página retirada 
-                    entrada_tp_retirada.presente = 0
-                    entrada_tp_retirada.modificado = 0
-                    self.simulador.quadros[esvaziar] = None
-                elif ratio > RATIO_MAX and self.quadros_processo[processo.identificador] < len(self.simulador.quadros):
-                    self.quadros_processo[processo.identificador] += 1
-                    # enquanto quantidade de quadros disponíveis na MP não é compatível com
-                    # numero de quadros necessitados pelo processo
-                    if not self.simulador.quadros.count(None):
-                        # seleciona processo para suspender
-                        esvaziar_processo = self.processos_na_mp.pop(0)
-                        # percorre quadros alocados para o processo
-                        # desaloca quadro da MP
-                        for esvaziar in self.quadros_alocados_por_processo[esvaziar_processo.identificador]:
-                            pagina_retirada = self.simulador.quadros[esvaziar]
-                            entrada_tp_retirada = pagina_retirada.processo.tabela_paginas[pagina_retirada.numero]
-                            # se for modificada, salva na memória secundária
-                            if entrada_tp_retirada.modificado:
-                                self.simulador.mudancas.append(ModificadaMensagem(pagina_retirada))
-                            # reseta informacoes da página retirada 
-                            entrada_tp_retirada.presente = 0
-                            entrada_tp_retirada.modificado = 0
-                            self.simulador.quadros[esvaziar] = None
-                        self.quadros_alocados_por_processo[esvaziar_processo.identificador] = []
-                        self.ponteiro[esvaziar_processo.identificador] = -1
-                    vazio = self.simulador.quadros.index(None) 
-
-            if not vazio:
-                # seleciona quadro do ponteiro para esvaziar
-                # avança ponteiro (e volta para 0 se passar do numero de quadros)
-                esvaziar = self.quadros_alocados_por_processo[processo.identificador][ponteiro]
-
-                self.ponteiro[processo.identificador] = (ponteiro + 1) % self.quadros_processo[processo.identificador]
-
-                pagina_retirada = self.simulador.quadros[esvaziar]
-                entrada_tp_retirada = pagina_retirada.processo.tabela_paginas[pagina_retirada.numero]
-                # se for modificada, salva na memória secundária
-                if entrada_tp_retirada.modificado:
-                    self.simulador.mudancas.append(ModificadaMensagem(pagina_retirada))
-                # reseta informacoes da página retirada 
-                entrada_tp_retirada.presente = 0
-                entrada_tp_retirada.modificado = 0
-                vazio = esvaziar
-            # coloca página acessada na MP
-            entrada_tp.quadro = vazio
-            entrada_tp.presente = 1
-            self.simulador.quadros[vazio] = pagina
-            self.simulador.mudancas.append(CarregadaMensagem(pagina))
+            # se processo estiver na MP
+            alocou = self.ajusta_processo_na_mp(processo, pagina)
+            if not alocou and entrada_tp.presente:
+                # já estava presente antes de ajustar tamanho
+                self.simulador.mudancas.append(PresenteMensagem(pagina))
+            elif not alocou:
+                # pagina acessada não está presente na MP
+                self.substitui_pagina_fifo(processo, pagina)
         else:
             # se processo não estiver na MP
-            if self.acessos[processo.identificador] % VERIFICAO == 1:
-                ratio = 1.0*self.falhas[processo.identificador]/self.acessos[processo.identificador]
-                if ratio < RATIO_MIN and self.quadros_processo[processo.identificador] > 1:
-                    self.quadros_processo[processo.identificador] -= 1
-                elif ratio > RATIO_MAX and self.quadros_processo[processo.identificador] < len(self.simulador.quadros):
-                    self.quadros_processo[processo.identificador] += 1
-                    
+            self.ajusta_processo_na_ms(processo)
 
-            # enquanto quantidade de quadros disponíveis na MP não é compatível com
-            # numero de quadros necessitados pelo processo
-            while self.simulador.quadros.count(None) < self.quadros_processo[processo.identificador]:
-                # seleciona processo para suspender
-                esvaziar_processo = self.processos_na_mp.pop(0)
-                # percorre quadros alocados para o processo
-                # desaloca quadro da MP
-                for esvaziar in self.quadros_alocados_por_processo[esvaziar_processo.identificador]:
-                    pagina_retirada = self.simulador.quadros[esvaziar]
-                    entrada_tp_retirada = pagina_retirada.processo.tabela_paginas[pagina_retirada.numero]
-                    # se for modificada, salva na memória secundária
-                    if entrada_tp_retirada.modificado:
-                        self.simulador.mudancas.append(ModificadaMensagem(pagina_retirada))
-                    # reseta informacoes da página retirada 
-                    entrada_tp_retirada.presente = 0
-                    entrada_tp_retirada.modificado = 0
-                    self.simulador.quadros[esvaziar] = None
-                self.quadros_alocados_por_processo[esvaziar_processo.identificador] = []
-                self.ponteiro[esvaziar_processo.identificador] = -1
-            # adiciona processo na fila de processos        
-            self.processos_na_mp.append(processo)
-            self.ponteiro[processo.identificador] = 0
-            numero_base = pagina.numero
-            numero_pagina_atual = pagina.numero
-            # descobre numero de paginas a serem carregadas na MP
-            carregar = self.quadros_processo[processo.identificador]
-            incremento = 1
-            while carregar > 0:
-                carregar -= 1
-                entrada_tp = processo.tabela_paginas[numero_pagina_atual]
-                pagina = processo.paginas[numero_pagina_atual]
-                # procura quadro vazio na MP e coloca pagina acessada na MP
-                vazio = self.simulador.quadros.index(None) 
-                entrada_tp.quadro = vazio
-                entrada_tp.presente = 1
-                self.simulador.mudancas.append(CarregadaMensagem(pagina))
-                self.simulador.quadros[vazio] = pagina
-                self.quadros_alocados_por_processo[processo.identificador].append(vazio)
-                numero_pagina_atual += incremento
-                # se chegar no limite do numero de paginas do processo
-                # inverte o loop a partir da pagina acessada
-                if numero_pagina_atual >= len(processo.paginas):
-                    incremento = -1
-                    numero_pagina_atual = numero_base - 1
-
-            self.falhas[processo.identificador] += 1
-        self.log()
+            # suspende processos na ordem FIFO até liberar espaço suficiente
+            # na MP para o conjunto residente e carrega o conjunto fixo
+            self.alocar_n_paginas(
+                processo,
+                pagina.numero,
+                processo.maximo_quadros,
+                ordem=self.processos_na_mp,
+            )
