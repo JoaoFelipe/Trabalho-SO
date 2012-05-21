@@ -1,9 +1,9 @@
 import unittest
-from simulador import Simulador
 from processo import Processo, EntradaTP
 
+
 class TestProcesso(unittest.TestCase):
-    
+
     def test_criarProcessoCom2PaginasComFragmentacao(self):
         processo = Processo(0, 516, 512)
         self.assertEqual(len(processo.paginas), 2)
@@ -20,4 +20,3 @@ class TestProcesso(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-        
