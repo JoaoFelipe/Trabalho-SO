@@ -1,5 +1,5 @@
 from math import ceil
-
+from copy import copy
 
 def teto_inteiro(x):
     return int(ceil(x))
@@ -31,7 +31,10 @@ class HistoricoQuadros(list):
         super(HistoricoQuadros, self).__init__(*args, **kwargs)
         self.simulador = simulador
         self.historico = []
+        self.historico_tp = []
 
     def append(self, x):
         super(HistoricoQuadros, self).append(x)
         self.historico.append(self.simulador.quadros[:])
+        self.historico_tp.append({pagina: copy(pagina.entrada_tp) for processo in self.simulador.processos for pagina in processo.paginas})
+

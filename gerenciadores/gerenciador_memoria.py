@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from base.mensagem import QuadroModificadoMensagem
-from base.mensagem import CarregadaMensagem, ModificadaMensagem
+from base.mensagem import CarregadaMensagem, ModificadaMensagem, QuadroDesalocadoMensagem, QuadroAcessadoMensagem
 from base.utils import teto_inteiro
 
 
@@ -28,8 +28,10 @@ class GerenciadorMemoria(object):
         self.continua_acesso(processo, pagina, entrada_tp)
         # se página foi modificada, seta bit M para 1
         if tipo == "W":
-            entrada_tp.modificado = 1
             self.simulador.mudancas.append(QuadroModificadoMensagem(pagina))
+            entrada_tp.modificado = 1
+        else:
+            self.simulador.mudancas.append(QuadroAcessadoMensagem(pagina))
 
     def descobre_pagina(self, endereco):
         """
@@ -48,6 +50,8 @@ class GerenciadorMemoria(object):
             entrada_tp = pagina.entrada_tp
         entrada_tp.quadro = quadro
         entrada_tp.presente = 1
+        if (self.simulador.quadros[quadro] != None):
+            self.simulador.mudancas.append(QuadroDesalocadoMensagem(self.simulador.quadros[quadro]))
         self.simulador.mudancas.append(CarregadaMensagem(pagina))
         self.simulador.quadros[quadro] = pagina
 
@@ -63,6 +67,7 @@ class GerenciadorMemoria(object):
         if entrada_tp.modificado:
             self.simulador.mudancas.append(ModificadaMensagem(pagina))
         # reseta informacoes da página retirada
+        self.simulador.mudancas.append(QuadroDesalocadoMensagem(pagina))
         entrada_tp.presente = 0
         entrada_tp.modificado = 0
         self.simulador.quadros[quadro] = None

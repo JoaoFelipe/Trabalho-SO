@@ -2,7 +2,7 @@
 
 from math import log
 from base.processo import Processo
-from base.mensagem import EnderecoMensagem, TerminouMensagem, FimInstrucaoMensagem
+from base.mensagem import EnderecoMensagem, TerminouMensagem
 from base.utils import HistoricoQuadros
 from gerenciadores.gerenciador_memoria import GerenciadorMemoria
 
@@ -85,4 +85,3 @@ class Simulador(object):
             self.acessar(self.linhas[self.ponteiro])
         else:
             self.mudancas.append(TerminouMensagem())
-        self.mudancas.append(FimInstrucaoMensagem)

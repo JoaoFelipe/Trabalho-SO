@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from base.mensagem import PresenteMensagem
+#from base.mensagem import PresenteMensagem
 from gerenciadores.fifo_local import FifoLocal
 
 
@@ -7,8 +7,9 @@ class FifoLocalFixo(FifoLocal):
 
     def continua_acesso(self, processo, pagina, entrada_tp):
         if entrada_tp.presente:
+            pass
             # página já está na MP, apenas acessa
-            self.simulador.mudancas.append(PresenteMensagem(pagina))
+            #self.simulador.mudancas.append(PresenteMensagem(pagina))
         elif not processo.estaSuspenso():
             # se processo está na MP
             self.substitui_pagina_fifo(processo, pagina)

@@ -5,7 +5,7 @@ from collections import namedtuple
 from functools import partial
 from pygame.locals import *
 from base.processo import EntradaTP
-from base.mensagem import ModificadaMensagem, CarregadaMensagem
+from base.mensagem import *
 
 PRETO = 0, 0, 0
 BRANCO = 255, 255, 255
@@ -16,6 +16,9 @@ TITULO = 'Simulador'
 
 ALTURA_BLOCO = int(0.05 * HEIGHT)
 LARGURA_BLOCO = int(0.175 * WIDTH)
+MODIFICADO = int((0.175 * 4 / 5) * WIDTH)
+
+TAMANHO_SETA = int((0.175 * 1 / 5) * WIDTH)
 
 ALTURA_ENTRADA_TP = int(0.05 * HEIGHT)
 LARGURA_ENTRADA_TP = int(0.3 * WIDTH)
@@ -30,6 +33,9 @@ POSICAO_TP = int(0.35 * WIDTH)
 
 TAMANHO_MENSAGEM = int(0.1 * HEIGHT)
 
+TEMPO_ANIMACAO = 60
+
+ALTURA_INSTRUCAO = int(0.025 * HEIGHT)
 
 class Button(namedtuple('Button', ['x', 'y', 'width', 'height', 'function'])):
 
@@ -38,25 +44,87 @@ class Button(namedtuple('Button', ['x', 'y', 'width', 'height', 'function'])):
         return self.x <= clique[0] <= self.x + self.width and self.y <= clique[1] <= self.y + self.height
 
 
-class Movimento(namedtuple('Button', ['pagina', 'xi', 'yi', 'xf', 'yf'])):
+class MovimentoPagina(namedtuple('MovimentoPagina', ['pagina', 'xi', 'yi', 'xf', 'yf'])):
 
     def __init__(self, *args, **kwargs):
-        super(Movimento, self).__init__(*args, **kwargs)
+        super(MovimentoPagina, self).__init__(*args, **kwargs)
         self.x = self.xi
         self.y = self.yi
-        self.tempo = 0
 
-    def move(self, t_max):
-        self.tempo += 1
-        self.x = int((self.xf - self.xi) * float(self.tempo) / float(t_max)) + self.xi
-        self.y = int((self.yf - self.yi) * float(self.tempo) / float(t_max)) + self.yi
+    def move(self, tempo, t_max):
+        self.x = int((self.xf - self.xi) * float(tempo) / float(t_max)) + self.xi
+        self.y = int((self.yf - self.yi) * float(tempo) / float(t_max)) + self.yi
 
-    @property
-    def fim(self):
-        if (self.xf >= self.xi):
-            return self.x >= self.xf and self.y >= self.yf
-        else:
-            return self.x <= self.xf and self.y <= self.yf
+    def animar(self, interface):
+        pagina = self.pagina
+        interface.imprimir_bloco_de_pagina(pagina, self.x, self.y)
+
+
+class MovimentoDesalocar(namedtuple('MovimentoDesalocar', ['pagina', 'xi', 'yi', 'xf', 'yf'])):
+
+    def __init__(self, *args, **kwargs):
+        super(MovimentoDesalocar, self).__init__(*args, **kwargs)
+        self.x = self.xi
+        self.y = self.yf
+
+    def move(self, tempo, t_max):
+        self.x = int((self.xf - self.xi) * float(tempo) / float(t_max)) + self.xi
+
+    def animar(self, interface):
+        x = self.x - self.xi
+        y = self.y - self.yi
+        rect = pygame.Rect(self.xi, interface.scroll + self.yi, x, y)
+        pygame.draw.rect(interface.screen, BRANCO, rect, 0)
+        pygame.draw.rect(interface.screen, AZUL, rect, 1)
+
+
+class MovimentoModificar(namedtuple('MovimentoModificar', ['pagina', 'xi', 'yi', 'xf', 'yf'])):
+
+    def __init__(self, *args, **kwargs):
+        super(MovimentoModificar, self).__init__(*args, **kwargs)
+        self.x = self.xi + MODIFICADO
+        self.y = self.yf
+        self.cadeia = MovimentoAcessar(*args, **kwargs)
+
+    def move(self, tempo, t_max):
+        self.x = int((self.xf - self.xi - MODIFICADO) * float(tempo) / float(t_max)) + self.xi + MODIFICADO
+        self.cadeia.move(tempo, t_max)
+        # self.y = int((self.yf - self.yi) * float(tempo) / float(t_max)) + self.yi
+
+    def animar(self, interface):
+        xi = self.xi + MODIFICADO + 1
+        yi = self.yi + interface.scroll + 1
+        tx = self.x - 1
+        # ty = self.y + 2 * ALTURA_BLOCO - self.yf + interface.scroll - 1
+        ty = self.yf + interface.scroll - 1
+        xf = self.x - 1
+        yf = self.yi + interface.scroll + 1
+        pointlist = [(xi, yi), (tx, ty), (xf, yf)]
+        pygame.draw.polygon(interface.screen, BRANCO, pointlist)
+        rect = pygame.Rect(self.xi, interface.scroll + self.yi, LARGURA_BLOCO, ALTURA_BLOCO)
+        pygame.draw.rect(interface.screen, AZUL, rect, 1)
+        self.cadeia.animar(interface)
+
+
+class MovimentoAcessar(namedtuple('MovimentoAcessar', ['pagina', 'xi', 'yi', 'xf', 'yf'])):
+
+    def __init__(self, *args, **kwargs):
+        super(MovimentoAcessar, self).__init__(*args, **kwargs)
+        self.xs = self.xi + LARGURA_BLOCO + TAMANHO_SETA / 3
+        self.ys = self.yi + ALTURA_BLOCO / 2
+
+    def move(self, tempo, t_max):
+        pass
+
+    def animar(self, interface):
+        xs, ys = self.xs, self.ys + interface.scroll
+        xsf1, ysf1 = xs + TAMANHO_SETA / 3, ys - ALTURA_BLOCO / 3
+        xsf2, ysf2 = xs + TAMANHO_SETA / 3, ys + ALTURA_BLOCO / 3
+        xs2, ys2 = self.xs, self.ys + interface.scroll
+        pointlist = [(xs, ys), (xsf1, ysf1), (xsf2, ysf2)]
+        pygame.draw.polygon(interface.screen, BRANCO, pointlist)
+        rect = pygame.Rect(xs + TAMANHO_SETA / 3, ys - ALTURA_BLOCO / 8, TAMANHO_SETA, ALTURA_BLOCO / 4)
+        pygame.draw.rect(interface.screen, BRANCO, rect, 0)
 
 
 #Faz cores aleatórias para cada processo
@@ -97,10 +165,14 @@ class PygameInterface(object):
 
         self.simulador = simulador
 
-        self.copia = []
-        self.estado = 1
-        self.movimento = None
-        self.quadros_aparentes()
+        self.pagina_atual = None
+        self.mensagem = ""
+        self.passo = 0
+        # while self.passo < 0:
+        #     self.passo += 1
+        #     self.pagina_atual = None
+        #     self.simulador.next()
+        self.estado = 0
 
         self.processo_selecionado = self.simulador.processos[0]
 
@@ -111,13 +183,75 @@ class PygameInterface(object):
         self.velocidade_scroll = 10
         self.scroll_pressionado = 0
 
-    def quadros_aparentes(self):
-        if len(self.simulador.mudancas.historico) > self.estado - 1 and self.estado > 0:
-            self.quadros = self.simulador.mudancas.historico[self.estado - 1]
-        elif len(self.simulador.mudancas.historico) > self.estado:
-            self.quadros = self.simulador.mudancas.historico[self.estado]
+    @property
+    def estado(self):
+        return self._estado
+
+    @estado.setter
+    def estado(self, value):
+        self.tempo = 0
+        self.movimento = None
+        self._estado = value
+        # chegou no final
+        if self._estado >= len(self.simulador.mudancas):
+            self.quadros_aparentes([])
+            if self.pagina_atual:
+                xi, yi = self.posicao_de_pagina_na_MP(self.pagina_atual, self.quadros)
+                self.movimento = MovimentoAcessar(self.pagina_atual, xi, yi, xi + LARGURA_BLOCO, yi + ALTURA_BLOCO)
         else:
+            atual = self.simulador.mudancas[self._estado]
+            self.mensagem = unicode(atual)
+            if type(atual) == EnderecoMensagem:
+                self.tempo = 30
+                self.quadros_aparentes([0])
+            elif type(atual) == TerminouMensagem:
+                self.quadros_aparentes([])
+            elif type(atual) == ModificadaMensagem:
+                self.quadros_aparentes([0])
+                quadros = self.simulador.mudancas.historico[self.estado]
+                xi, yi = self.posicao_de_pagina_na_MP(atual.pagina, quadros)
+                xf, yf = self.posicao_de_pagina_na_MS(atual.pagina)
+                self.movimento = MovimentoPagina(atual.pagina, xi, yi, xf, yf)
+            # elif type(atual) == PresenteMensagem:
+            #     self.quadros_aparentes([1])
+            elif type(atual) == CarregadaMensagem:
+                self.quadros_aparentes([1])
+                quadros = self.quadros
+                self.quadros_aparentes([0])
+                xi, yi = self.posicao_de_pagina_na_MS(atual.pagina)
+                xf, yf = self.posicao_de_pagina_na_MP(atual.pagina, quadros)
+                self.movimento = MovimentoPagina(atual.pagina, xi, yi, xf, yf)
+            elif type(atual) == QuadroModificadoMensagem:
+                self.quadros_aparentes([0])
+                quadros = self.simulador.mudancas.historico[self.estado]
+                xi, yi = self.posicao_de_pagina_na_MP(atual.pagina, quadros)
+                self.movimento = MovimentoModificar(atual.pagina, xi, yi, xi + LARGURA_BLOCO, yi + ALTURA_BLOCO)
+                self.pagina_atual = atual.pagina
+            elif type(atual) == QuadroDesalocadoMensagem:
+                self.quadros_aparentes([0])
+                quadros = self.simulador.mudancas.historico[self.estado]
+                xi, yi = self.posicao_de_pagina_na_MP(atual.pagina, quadros)
+                self.movimento = MovimentoDesalocar(atual.pagina, xi, yi, xi + LARGURA_BLOCO, yi + ALTURA_BLOCO)
+            elif type(atual) == QuadroAcessadoMensagem:
+                self.quadros_aparentes([1])
+                quadros = self.simulador.mudancas.historico[self.estado]
+                xi, yi = self.posicao_de_pagina_na_MP(atual.pagina, quadros)
+                self.movimento = MovimentoAcessar(atual.pagina, xi, yi, xi + LARGURA_BLOCO, yi + ALTURA_BLOCO)
+                self.pagina_atual = atual.pagina
+            else:
+                self.quadros_aparentes([1])
+
+    def quadros_aparentes(self, tentativas=range(-1, 1)):
+        self.quadros = None
+        self.tp = None
+        for i in tentativas:
+            if self.estado + i < len(self.simulador.mudancas.historico) and self.estado + i >= 0:
+                self.quadros = self.simulador.mudancas.historico[self.estado + i]
+                self.tp = self.simulador.mudancas.historico_tp[self.estado + i]
+            break
+        if not self.quadros:
             self.quadros = self.simulador.quadros
+            self.tp = {pagina: pagina.entrada_tp  for processo in self.simulador.processos for pagina in processo.paginas}
 
     def imprimir_pagina(self, pagina, x, y):
         centerx = x + LARGURA_BLOCO / 2
@@ -130,6 +264,23 @@ class PygameInterface(object):
         rect = pygame.Rect(x, self.scroll + y, LARGURA_BLOCO, ALTURA_BLOCO)
         pygame.draw.rect(self.screen, cor, rect, 0)
         pygame.draw.rect(self.screen, AZUL, rect, 1)
+
+    def imprimir_bloco_de_pagina(self, pagina, x, y, alteracao=True):
+        cor = BRANCO if pagina == None else calcular_cor(pagina.processo.identificador, len(self.simulador.processos))
+        self.imprimir_bloco(x, y, cor)
+        if not pagina == None:
+            self.imprimir_pagina(pagina, x, y)
+            if self.tp[pagina].modificado and alteracao:
+                xi = x + MODIFICADO + 1
+                yi = y + self.scroll + 1
+                tx = x + LARGURA_BLOCO - 1
+                ty = y + self.scroll + ALTURA_BLOCO - 1
+                xf = x + LARGURA_BLOCO - 1
+                yf = y + self.scroll + 1
+                pointlist = [(xi, yi), (tx, ty), (xf, yf)]
+                pygame.draw.polygon(self.screen, BRANCO, pointlist)
+                rect = pygame.Rect(x, yi - 1, LARGURA_BLOCO, ALTURA_BLOCO)
+                pygame.draw.rect(self.screen, AZUL, rect, 1)
 
     def imprimir_entrada_tp(self, entrada, x, y, cor):
         rectp = pygame.Rect(x, self.scroll + y, ESPACO_BIT, ALTURA_ENTRADA_TP)
@@ -163,10 +314,7 @@ class PygameInterface(object):
         self.screen.blit(text, textrect)
         y = ALTURA_BLOCO
         for i, pagina in enumerate(self.quadros):
-            cor = BRANCO if pagina == None else calcular_cor(pagina.processo.identificador, len(self.simulador.processos))
-            self.imprimir_bloco(POSICAO_MP, y, cor)
-            if not pagina == None:
-                self.imprimir_pagina(pagina, POSICAO_MP, y)
+            self.imprimir_bloco_de_pagina(pagina, POSICAO_MP, y)
             self.imprimir_numero(y, i)
             y += ALTURA_BLOCO
         return y + ALTURA_BLOCO
@@ -178,12 +326,9 @@ class PygameInterface(object):
         y = ALTURA_BLOCO
         for i, processo in enumerate(self.simulador.processos):
             inicio = y
-            cor = calcular_cor(processo.identificador, len(self.simulador.processos))
             for j, pagina in enumerate(processo.paginas):
-                self.imprimir_bloco(POSICAO_MS, y, cor)
-                self.imprimir_pagina(pagina, POSICAO_MS, y)
+                self.imprimir_bloco_de_pagina(pagina, POSICAO_MS, y, alteracao=False)
                 y += ALTURA_BLOCO
-
             button = Button(POSICAO_MS, inicio, LARGURA_BLOCO, y - inicio, partial(self._set_processo_selecionado, processo))
             self.buttons.append(button)
         return y + ALTURA_BLOCO
@@ -202,22 +347,25 @@ class PygameInterface(object):
         return y + ALTURA_ENTRADA_TP
 
     def imprimir_mensagem(self):
+        if len(self.simulador.mudancas):
+            text = self.font.render(unicode(self.passo) + u'- ' + unicode(self.simulador.mudancas[0]), 1, BRANCO)
+            textrect = text.get_rect(x=12, centery=ALTURA_INSTRUCAO)
+            self.screen.blit(text, textrect)
+
         rect = pygame.Rect(0, HEIGHT - TAMANHO_MENSAGEM, WIDTH, TAMANHO_MENSAGEM)
         pygame.draw.rect(self.screen, BRANCO, rect, 0)
 
-        posicao = HEIGHT - TAMANHO_MENSAGEM + 5
-        for mudanca in self.simulador.mudancas:
+        posicao = HEIGHT - TAMANHO_MENSAGEM
+        mudancas = self.simulador.mudancas[self.estado:self.estado + 4]
+        if len(mudancas) < 4 and len(self.simulador.mudancas) >= 4:
+            mudancas = self.simulador.mudancas[len(self.simulador.mudancas) - 4:]
+        elif len(mudancas) < 4:
+            mudancas = self.simulador.mudancas
+        for mudanca in mudancas:
             posicao += 12
             text = self.font.render(unicode(mudanca), 1, PRETO)
             textrect = text.get_rect(x=12, centery=posicao)
             self.screen.blit(text, textrect)
-
-#        posicao += 12
-#        for i, linha in enumerate(self.simulador.linhas):
-#            posicao += 12
-#            text = self.font.render(linha + ('*' if self.simulador.ponteiro == i else ''), 1, BRANCO)
-#            textrect = text.get_rect(centerx=POSICAO_TP + LARGURA_ENTRADA_TP / 2,centery=self.scroll + self.final_TP + ALTURA_ENTRADA_TP / 2 + posicao)
-#            self.screen.blit(text, textrect)
 
     def posicao_de_pagina_na_MP(self, pagina, quadros):
         y = ALTURA_BLOCO
@@ -236,40 +384,10 @@ class PygameInterface(object):
                 y += ALTURA_BLOCO
         return (None, None)
 
-    def tratar_mudancas(self):
-        if not len(self.simulador.mudancas) > self.estado:
-            return None
-        atual = self.simulador.mudancas[self.estado]
-        if not self.movimento:
-            if type(atual) == ModificadaMensagem:
-                quadros = self.simulador.mudancas.historico[self.estado]
-                xi, yi = self.posicao_de_pagina_na_MP(atual.pagina, quadros)
-                xf, yf = self.posicao_de_pagina_na_MS(atual.pagina)
-                self.movimento = Movimento(atual.pagina, xi, yi, xf, yf)
-
-            elif type(atual) == CarregadaMensagem:
-                if len(self.simulador.mudancas.historico) > self.estado + 1:
-                    self.quadros = self.simulador.mudancas.historico[self.estado + 1]
-                else:
-                    self.quadros = self.simulador.quadros
-                xi, yi = self.posicao_de_pagina_na_MS(atual.pagina)
-                xf, yf = self.posicao_de_pagina_na_MP(atual.pagina, self.quadros)
-                self.movimento = Movimento(atual.pagina, xi, yi, xf, yf)
-
-            else:
-                self.estado += 1
-
     def animacao(self):
-        if self.movimento:
-            pagina = self.movimento.pagina
-            processo = pagina.processo
-            cor = calcular_cor(processo.identificador, len(self.simulador.processos))
-            self.movimento.move(60)
-            self.imprimir_bloco(self.movimento.x, self.movimento.y, cor)
-            self.imprimir_pagina(pagina, self.movimento.x, self.movimento.y)
-            if self.movimento.fim:
-                self.movimento = None
-                self.estado += 1
+        if (self.movimento):
+            self.movimento.move(self.tempo, TEMPO_ANIMACAO)
+            self.movimento.animar(self)
 
     def _set_processo_selecionado(self, processo):
         self.processo_selecionado = processo
@@ -287,8 +405,9 @@ class PygameInterface(object):
                     self.scroll_pressionado = -1
             elif event.type == KEYUP:
                 if event.key == K_RIGHT:
-                    self.estado = 0
+                    self.passo += 1
                     self.simulador.next()
+                    self.estado = 0
                 self.scroll_pressionado = 0
 
             elif event.type == MOUSEBUTTONDOWN:
@@ -307,6 +426,9 @@ class PygameInterface(object):
                 self.clique = []
 
     def update(self):
+        self.tempo += 1
+        if self.tempo >= TEMPO_ANIMACAO and self.estado < len(self.simulador.mudancas):
+            self.estado += 1
         self.buttons = []
         self.scroll += self.scroll_pressionado * self.velocidade_scroll
         if isinstance(self.clique, tuple):
@@ -327,16 +449,17 @@ class PygameInterface(object):
         self.imprimir_MP()
         self.imprimir_MS()
         self.imprimir_TP(self.processo_selecionado)
-        self.imprimir_mensagem()
 
     def game_loop(self):
         while 1:
-            self.quadros_aparentes()
             self.clock.tick(60)
             self.eventos()
             self.update()
             self.screen.fill(PRETO)
             self.imprimir()
-            self.tratar_mudancas()
             self.animacao()
+            self.imprimir_mensagem()
+            # text = self.font.render(unicode(self.passo)+' '+unicode(self.estado)+' '+unicode(self.tempo)+unicode(self.mensagem), 1, BRANCO)
+            # textrect = text.get_rect(center=(300, 300))
+            # self.screen.blit(text, textrect)
             pygame.display.flip()

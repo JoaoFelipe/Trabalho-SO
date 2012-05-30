@@ -23,12 +23,12 @@ class ModificadaMensagem(EqualByUnicode):
         return u"Página %s do processo %s salva na memória secundária" % (self.pagina.numero, self.pagina.processo.identificador)
 
 
-class PresenteMensagem(EqualByUnicode):
-    def __init__(self, pagina):
-        self.pagina = pagina
+# class PresenteMensagem(EqualByUnicode):
+#     def __init__(self, pagina):
+#         self.pagina = pagina
 
-    def __unicode__(self):
-        return u"Página %s do processo %s já está na memória principal" % (self.pagina.numero, self.pagina.processo.identificador)
+#     def __unicode__(self):
+#         return u"Página %s do processo %s já está na memória principal" % (self.pagina.numero, self.pagina.processo.identificador)
 
 
 class CarregadaMensagem(EqualByUnicode):
@@ -47,9 +47,17 @@ class QuadroModificadoMensagem(EqualByUnicode):
         return u"Quadro com página %s do processo %s foi modificado" % (self.pagina.numero, self.pagina.processo.identificador)
 
 
-class FimInstrucaoMensagem(EqualByUnicode):
-    def __init__(self):
-        self.mensagem = u""
+class QuadroDesalocadoMensagem(EqualByUnicode):
+    def __init__(self, pagina):
+        self.pagina = pagina
 
     def __unicode__(self):
-        return u"%s" % ("")
+        return u"Quadro com página %s do processo %s foi desalocado" % (self.pagina.numero, self.pagina.processo.identificador)
+
+
+class QuadroAcessadoMensagem(EqualByUnicode):
+    def __init__(self, pagina):
+        self.pagina = pagina
+
+    def __unicode__(self):
+        return u"Quadro com página %s do processo %s foi acessado" % (self.pagina.numero, self.pagina.processo.identificador)

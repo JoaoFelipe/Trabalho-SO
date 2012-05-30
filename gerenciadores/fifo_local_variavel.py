@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from base.mensagem import PresenteMensagem
+#from base.mensagem import PresenteMensagem
 from gerenciadores.fifo_local import FifoLocal
 
 VERIFICAO = 4
@@ -68,8 +68,9 @@ class FifoLocalVariavel(FifoLocal):
             # se processo estiver na MP
             alocou = self.ajusta_processo_na_mp(processo, pagina)
             if not alocou and entrada_tp.presente:
+                pass
                 # já estava presente antes de ajustar tamanho
-                self.simulador.mudancas.append(PresenteMensagem(pagina))
+                # self.simulador.mudancas.append(PresenteMensagem(pagina))
             elif not alocou:
                 # pagina acessada não está presente na MP
                 self.substitui_pagina_fifo(processo, pagina)

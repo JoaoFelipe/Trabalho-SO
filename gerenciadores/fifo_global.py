@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from gerenciadores.gerenciador_memoria import GerenciadorMemoria
-from base.mensagem import PresenteMensagem
+#from base.mensagem import PresenteMensagem
 
 
 class FifoGlobal(GerenciadorMemoria):
@@ -25,5 +25,6 @@ class FifoGlobal(GerenciadorMemoria):
             # coloca página acessada na MP
             self.alocar_pagina_no_quadro(vazio, pagina, entrada_tp=entrada_tp)
         else:
+            pass
             # página já está na MP, apenas acessa
-            self.simulador.mudancas.append(PresenteMensagem(pagina))
+            # self.simulador.mudancas.append(PresenteMensagem(pagina))

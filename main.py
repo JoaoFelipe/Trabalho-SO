@@ -12,8 +12,8 @@ if __name__ == '__main__':
         'processos': [2000, 2000, 3000, 5000, 7000, 2000, 8000, 9000],
     }
 
-    gerenciador = FifoGlobal
-    # gerenciador = FifoLocalFixo
+    # gerenciador = FifoGlobal
+    gerenciador = FifoLocalFixo
     # gerenciador = FifoLocalVariavel
     simulador = Simulador(gerenciador_memoria=gerenciador, **tamanhos)
     PygameInterface(simulador).game_loop()
