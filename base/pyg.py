@@ -5,6 +5,7 @@ from collections import namedtuple
 from functools import partial
 from pygame.locals import *
 from base.processo import EntradaTP
+from base.mensagem import ModificadaMensagem, CarregadaMensagem
 
 PRETO = 0, 0, 0
 BRANCO = 255, 255, 255
@@ -35,6 +36,27 @@ class Button(namedtuple('Button', ['x', 'y', 'width', 'height', 'function'])):
     def __contains__(self, clique):
         # Verifica se clique acertou o botão
         return self.x <= clique[0] <= self.x + self.width and self.y <= clique[1] <= self.y + self.height
+
+
+class Movimento(namedtuple('Button', ['pagina', 'xi', 'yi', 'xf', 'yf'])):
+
+    def __init__(self, *args, **kwargs):
+        super(Movimento, self).__init__(*args, **kwargs)
+        self.x = self.xi
+        self.y = self.yi
+        self.tempo = 0
+
+    def move(self, t_max):
+        self.tempo += 1
+        self.x = int((self.xf - self.xi) * float(self.tempo) / float(t_max)) + self.xi
+        self.y = int((self.yf - self.yi) * float(self.tempo) / float(t_max)) + self.yi
+
+    @property
+    def fim(self):
+        if (self.xf >= self.xi):
+            return self.x >= self.xf and self.y >= self.yf
+        else:
+            return self.x <= self.xf and self.y <= self.yf
 
 
 #Faz cores aleatórias para cada processo
@@ -75,6 +97,11 @@ class PygameInterface(object):
 
         self.simulador = simulador
 
+        self.copia = []
+        self.estado = 1
+        self.movimento = None
+        self.quadros_aparentes()
+
         self.processo_selecionado = self.simulador.processos[0]
 
         # Usado para calcular o scroll máximo
@@ -83,6 +110,14 @@ class PygameInterface(object):
 
         self.velocidade_scroll = 10
         self.scroll_pressionado = 0
+
+    def quadros_aparentes(self):
+        if len(self.simulador.mudancas.historico) > self.estado - 1 and self.estado > 0:
+            self.quadros = self.simulador.mudancas.historico[self.estado - 1]
+        elif len(self.simulador.mudancas.historico) > self.estado:
+            self.quadros = self.simulador.mudancas.historico[self.estado]
+        else:
+            self.quadros = self.simulador.quadros
 
     def imprimir_pagina(self, pagina, x, y):
         centerx = x + LARGURA_BLOCO / 2
@@ -127,7 +162,7 @@ class PygameInterface(object):
         textrect = text.get_rect(centerx=POSICAO_MP + LARGURA_BLOCO / 2, centery=self.scroll + ALTURA_BLOCO / 2)
         self.screen.blit(text, textrect)
         y = ALTURA_BLOCO
-        for i, pagina in enumerate(self.simulador.quadros):
+        for i, pagina in enumerate(self.quadros):
             cor = BRANCO if pagina == None else calcular_cor(pagina.processo.identificador, len(self.simulador.processos))
             self.imprimir_bloco(POSICAO_MP, y, cor)
             if not pagina == None:
@@ -184,6 +219,58 @@ class PygameInterface(object):
 #            textrect = text.get_rect(centerx=POSICAO_TP + LARGURA_ENTRADA_TP / 2,centery=self.scroll + self.final_TP + ALTURA_ENTRADA_TP / 2 + posicao)
 #            self.screen.blit(text, textrect)
 
+    def posicao_de_pagina_na_MP(self, pagina, quadros):
+        y = ALTURA_BLOCO
+        for i, p in enumerate(quadros):
+            if p == pagina:
+                return (POSICAO_MP, y)
+            y += ALTURA_BLOCO
+        return (None, None)
+
+    def posicao_de_pagina_na_MS(self, pagina):
+        y = ALTURA_BLOCO
+        for i, processo in enumerate(self.simulador.processos):
+            for j, p in enumerate(processo.paginas):
+                if p == pagina:
+                    return (POSICAO_MS, y)
+                y += ALTURA_BLOCO
+        return (None, None)
+
+    def tratar_mudancas(self):
+        if not len(self.simulador.mudancas) > self.estado:
+            return None
+        atual = self.simulador.mudancas[self.estado]
+        if not self.movimento:
+            if type(atual) == ModificadaMensagem:
+                quadros = self.simulador.mudancas.historico[self.estado]
+                xi, yi = self.posicao_de_pagina_na_MP(atual.pagina, quadros)
+                xf, yf = self.posicao_de_pagina_na_MS(atual.pagina)
+                self.movimento = Movimento(atual.pagina, xi, yi, xf, yf)
+
+            elif type(atual) == CarregadaMensagem:
+                if len(self.simulador.mudancas.historico) > self.estado + 1:
+                    self.quadros = self.simulador.mudancas.historico[self.estado + 1]
+                else:
+                    self.quadros = self.simulador.quadros
+                xi, yi = self.posicao_de_pagina_na_MS(atual.pagina)
+                xf, yf = self.posicao_de_pagina_na_MP(atual.pagina, self.quadros)
+                self.movimento = Movimento(atual.pagina, xi, yi, xf, yf)
+
+            else:
+                self.estado += 1
+
+    def animacao(self):
+        if self.movimento:
+            pagina = self.movimento.pagina
+            processo = pagina.processo
+            cor = calcular_cor(processo.identificador, len(self.simulador.processos))
+            self.movimento.move(60)
+            self.imprimir_bloco(self.movimento.x, self.movimento.y, cor)
+            self.imprimir_pagina(pagina, self.movimento.x, self.movimento.y)
+            if self.movimento.fim:
+                self.movimento = None
+                self.estado += 1
+
     def _set_processo_selecionado(self, processo):
         self.processo_selecionado = processo
 
@@ -200,6 +287,7 @@ class PygameInterface(object):
                     self.scroll_pressionado = -1
             elif event.type == KEYUP:
                 if event.key == K_RIGHT:
+                    self.estado = 0
                     self.simulador.next()
                 self.scroll_pressionado = 0
 
@@ -243,9 +331,12 @@ class PygameInterface(object):
 
     def game_loop(self):
         while 1:
+            self.quadros_aparentes()
             self.clock.tick(60)
             self.eventos()
             self.update()
             self.screen.fill(PRETO)
             self.imprimir()
+            self.tratar_mudancas()
+            self.animacao()
             pygame.display.flip()

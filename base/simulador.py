@@ -2,7 +2,8 @@
 
 from math import log
 from base.processo import Processo
-from base.mensagem import EnderecoMensagem, TerminouMensagem
+from base.mensagem import EnderecoMensagem, TerminouMensagem, FimInstrucaoMensagem
+from base.utils import HistoricoQuadros
 from gerenciadores.gerenciador_memoria import GerenciadorMemoria
 
 
@@ -39,7 +40,7 @@ class Simulador(object):
         self.tamanho_endereco_logico = endereco_logico
         self.tamanho_memoria_fisica = memoria_fisica
         self.tamanho_memoria_secundaria = memoria_secundaria
-        self.mudancas = []
+        self.mudancas = HistoricoQuadros(self)
         # Monta lista de processos pelos tamanhos dos processos - Pode representar a memoria secundaria
         self.processos = [Processo(i, processos[i], pagina) for i in xrange(len(processos))]
 
@@ -77,9 +78,11 @@ class Simulador(object):
                 self.linhas.append(linha.split('\n')[0])
 
     def next(self):
+        self.mudancas = HistoricoQuadros(self)
         self.ponteiro += 1
         if self.ponteiro < len(self.linhas):
-            self.mudancas = [EnderecoMensagem(self.linhas[self.ponteiro])]
+            self.mudancas.append(EnderecoMensagem(self.linhas[self.ponteiro]))
             self.acessar(self.linhas[self.ponteiro])
         else:
-            self.mudancas = [TerminouMensagem()]
+            self.mudancas.append(TerminouMensagem())
+        self.mudancas.append(FimInstrucaoMensagem)

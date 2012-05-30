@@ -45,3 +45,11 @@ class QuadroModificadoMensagem(EqualByUnicode):
 
     def __unicode__(self):
         return u"Quadro com página %s do processo %s foi modificado" % (self.pagina.numero, self.pagina.processo.identificador)
+
+
+class FimInstrucaoMensagem(EqualByUnicode):
+    def __init__(self):
+        self.mensagem = u""
+
+    def __unicode__(self):
+        return u"%s" % ("")

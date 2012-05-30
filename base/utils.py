@@ -24,3 +24,14 @@ class EqualByAttributes(object):
 class EqualByUnicode(object):
     def __eq__(self, outro):
         return unicode(self) == unicode(outro)
+
+
+class HistoricoQuadros(list):
+    def __init__(self, simulador, *args, **kwargs):
+        super(HistoricoQuadros, self).__init__(*args, **kwargs)
+        self.simulador = simulador
+        self.historico = []
+
+    def append(self, x):
+        super(HistoricoQuadros, self).append(x)
+        self.historico.append(self.simulador.quadros[:])

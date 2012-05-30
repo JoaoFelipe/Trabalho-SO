@@ -48,8 +48,8 @@ class GerenciadorMemoria(object):
             entrada_tp = pagina.entrada_tp
         entrada_tp.quadro = quadro
         entrada_tp.presente = 1
-        self.simulador.quadros[quadro] = pagina
         self.simulador.mudancas.append(CarregadaMensagem(pagina))
+        self.simulador.quadros[quadro] = pagina
 
     def desalocar_quadro(self, quadro):
         """
