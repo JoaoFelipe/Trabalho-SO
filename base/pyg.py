@@ -6,6 +6,7 @@ from functools import partial
 from pygame.locals import *
 from base.processo import EntradaTP
 from base.mensagem import *
+from gerenciadores import *
 
 PRETO = 0, 0, 0
 BRANCO = 255, 255, 255
@@ -334,17 +335,46 @@ class PygameInterface(object):
         return y + ALTURA_BLOCO
 
     def imprimir_TP(self, processo):
-        text = self.font.render(u"Tabela de páginas de P" + str(processo.identificador), 1, BRANCO)
-        textrect = text.get_rect(centerx=POSICAO_TP + LARGURA_ENTRADA_TP / 2, centery=self.scroll + ALTURA_ENTRADA_TP / 2)
-        self.screen.blit(text, textrect)
-        y = ALTURA_ENTRADA_TP
+        y = ALTURA_ENTRADA_TP / 2
         cor = calcular_cor(processo.identificador, len(self.simulador.processos))
+        gerenciador = self.simulador.gerenciador_memoria
+
+        text = self.font.render(u"Tabela de páginas de P" + str(processo.identificador), 1, BRANCO)
+        textrect = text.get_rect(centerx=POSICAO_TP + LARGURA_ENTRADA_TP / 2, centery=self.scroll + y)
+        self.screen.blit(text, textrect)
+        y += ALTURA_ENTRADA_TP / 2
         self.imprimir_entrada_tp(EntradaTP("P", "M", "Quadro"), POSICAO_TP, y, cor)
         y += ALTURA_ENTRADA_TP
         for i, entrada in enumerate(processo.tabela_paginas):
             self.imprimir_entrada_tp(entrada, POSICAO_TP, y, cor)
             y += ALTURA_ENTRADA_TP
-        return y + ALTURA_ENTRADA_TP
+
+        y += ALTURA_ENTRADA_TP
+
+        if type(gerenciador) == LRUGlobal:
+            referencias = ' '.join([str(q) for q in gerenciador.referencias])
+            text = self.font.render(u"Referencias - quadros: " + referencias, 1, BRANCO)
+            textrect = text.get_rect(centerx=POSICAO_TP + LARGURA_ENTRADA_TP / 2, centery=self.scroll + y)
+            self.screen.blit(text, textrect)
+            y += 20
+
+        if type(gerenciador) == LRULocalFixo:
+            referencias = ' '.join([str(q) for q in processo.referencias])
+            text = self.font.render(u"Referencias - quadros: " + referencias, 1, BRANCO)
+            textrect = text.get_rect(centerx=POSICAO_TP + LARGURA_ENTRADA_TP / 2, centery=self.scroll + y)
+            self.screen.blit(text, textrect)
+            y += 20
+
+        if type(gerenciador) == LRULocalFixo:
+            referencias = ' '.join([str(p.identificador) for p in gerenciador.processos_na_mp])
+            text = self.font.render(u"Referencias - processos: " + referencias, 1, BRANCO)
+            textrect = text.get_rect(centerx=POSICAO_TP + LARGURA_ENTRADA_TP / 2, centery=self.scroll + y)
+            self.screen.blit(text, textrect)
+            y += 20
+
+       
+
+        return y
 
     def imprimir_mensagem(self):
         if len(self.simulador.mudancas):

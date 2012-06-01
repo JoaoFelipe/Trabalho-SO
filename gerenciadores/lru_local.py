@@ -1,35 +1,33 @@
 # -*- coding: utf-8 -*-
-from collections import deque as queue
 from gerenciadores.gerenciador_memoria import GerenciadorMemoria, GerenciadorLocal
+from collections import deque
 
 
-class FifoLocal(GerenciadorMemoria, GerenciadorLocal):
+class LRULocal(GerenciadorMemoria, GerenciadorLocal):
 
     def __init__(self, simulador):
-        super(FifoLocal, self).__init__(simulador)
-        self.processos_na_mp = queue()
+        super(LRULocal, self).__init__(simulador)
+        self.processos_na_mp = deque()
         self.quadros_por_processo()
         for i, processo in enumerate(self.simulador.processos):
-            processo.ponteiro = -1
+            processo.referencias = deque()
             processo.conjunto_residente = []
 
-    def substitui_pagina_fifo(self, processo, pagina):
+    def substitui_pagina_lru(self, processo, pagina):
         """
-        Seleciona quadro a ser retirado pela política FIFO
+        Seleciona quadro a ser retirado pela política LRU
         Retira a página do quadros
         Aloca nova pagina ao quadro
         """
-        vazio = self.retira_pagina_fifo(processo)
+        vazio = self.retira_pagina_lru(processo)
         self.alocar_pagina_no_quadro(vazio, pagina)
 
-    def retira_pagina_fifo(self, processo):
+    def retira_pagina_lru(self, processo):
         """
-        Seleciona quadro do ponteiro para desalocar
-        Avança ponteiro (e volta para 0 se passar do numero de quadros)
+        Seleciona quadro do inicio da fila de referencias para desalocar
         Desaloca pagina do quadro selecionado
         """
-        vazio = processo.conjunto_residente[processo.ponteiro]
-        processo.ponteiro = (processo.ponteiro + 1) % processo.maximo_quadros
+        vazio = processo.referencias.popleft()
         self.desalocar_quadro(vazio)
         return vazio
 
@@ -39,9 +37,10 @@ class FifoLocal(GerenciadorMemoria, GerenciadorLocal):
         -lista de quadros em MP (deixar vazia)
         -ponteiro do processo na lista de ponteiros (deixar == -1)
         """
-        super(FifoLocal, self).suspender_processo(processo)
+        super(LRULocal, self).suspender_processo(processo)
+        self.processos_na_mp.remove(processo)
         processo.conjunto_residente = []
-        processo.ponteiro = -1
+        processo.referencias = deque()
 
     def alocar_pagina_no_quadro(self, quadro, pagina, entrada_tp=None):
         """
@@ -49,22 +48,23 @@ class FifoLocal(GerenciadorMemoria, GerenciadorLocal):
 
         --definir que se uma página de um processo suspenso for carregada,
         o processo deixa de ser suspenso:
-        ----é adicionado a uma fila de processos, para FIFO de processos
-        ----ponteiro interno dele passa a ser 0, para a FIFO interna de páginas
+        ----é adicionado a um deque de processos, para LRU de processos
+        ----referencias de paginas do processo inicializada, para a LRU interna
 
         --definir que se um quadro que não estava no conjunto residente
-        for alocado ao processo, ele deve entrar no conjunto residente
-        (isso é válido para quando o processo está sendo carregado,
-        a FIFO interna segue a ordem de adição ao conjunto residente)
+        for alocado ao processo, ele deve entrar no conjunto residente e a
+        a referencia a ele deve ser adicionada ao final da fila para a
+        LRU interna de páginas
         """
         processo = pagina.processo
         if processo.estaSuspenso():
-            self.processos_na_mp.appendleft(processo)
-            processo.ponteiro = 0
+            self.processos_na_mp.append(processo)
+            processo.referencias = deque()
         if quadro not in processo.conjunto_residente:
             processo.conjunto_residente.append(quadro)
-        super(FifoLocal, self).alocar_pagina_no_quadro(
+        super(LRULocal, self).alocar_pagina_no_quadro(
             quadro,
             pagina,
             entrada_tp=entrada_tp
         )
+        processo.referencias.append(quadro)

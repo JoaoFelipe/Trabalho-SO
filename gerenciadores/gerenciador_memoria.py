@@ -4,6 +4,11 @@ from base.mensagem import CarregadaMensagem, ModificadaMensagem, QuadroDesalocad
 from base.utils import teto_inteiro
 
 
+LIMITE = 0.4
+MENOR = 0.3
+MAIOR = 0.6
+
+
 class GerenciadorMemoria(object):
 
     def __init__(self, simulador):
@@ -153,10 +158,18 @@ class GerenciadorLocal(object):
         Tomando como base o espaço disponível em MP e o número
         de páginas dos dos processos a serem executados
 
-        razao = (numero de quadros da MP) / (total de paginas da MS)
-        numero de quadros para Px = teto[razao * (numero de páginas de Px)]
+        razao = (total de paginas do processo) / (numero de quadros da MP)
+        se razao < LIMITE (0.4), então
+            numero de quadros para Px = MENOR (0.3) * tamanho_memoria
+        senao
+            numero de quadros para Px = MAIOR (0.6) * tamanho_memoria
         """
-        paginas_de_cada_processo = [len(processo.paginas) for processo in self.simulador.processos]
-        razao = len(self.simulador.quadros) / (sum(paginas_de_cada_processo) + .0)
-        quadros_por_processo = [teto_inteiro(razao * numero_paginas) for numero_paginas in paginas_de_cada_processo]
-        return quadros_por_processo
+        simulador = self.simulador
+        for processo in simulador.processos:
+            tamanho_processo = float(len(processo.paginas))
+            tamanho_memoria = len(simulador.quadros)
+            razao = tamanho_processo / tamanho_memoria
+            if razao < LIMITE:
+                processo.maximo_quadros = int(round(tamanho_memoria * MENOR))
+            else:
+                processo.maximo_quadros = int(round(tamanho_memoria * MAIOR))
