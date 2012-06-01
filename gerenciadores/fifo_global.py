@@ -18,9 +18,7 @@ class FifoGlobal(GerenciadorMemoria):
                 vazio = self.simulador.quadros.index(None)
             else:
                 # seleciona quadro do ponteiro para desalocar
-                # avança ponteiro (e volta para 0 se passar do numero de quadros)
                 vazio = self.ponteiro
-                self.ponteiro = (self.ponteiro + 1) % len(self.simulador.quadros)
                 self.desalocar_quadro(vazio)
             # coloca página acessada na MP
             self.alocar_pagina_no_quadro(vazio, pagina, entrada_tp=entrada_tp)
@@ -28,3 +26,9 @@ class FifoGlobal(GerenciadorMemoria):
             pass
             # página já está na MP, apenas acessa
             # self.simulador.mudancas.append(PresenteMensagem(pagina))
+
+    def desalocar_quadro(self, quadro, remover=False):
+        # avança ponteiro (e volta para 0 se passar do numero de quadros)
+        super(FifoGlobal, self).desalocar_quadro(quadro, remover)
+        if self.ponteiro == quadro:
+            self.ponteiro = (self.ponteiro + 1) % len(self.simulador.quadros)

@@ -9,7 +9,7 @@ class FifoLocal(GerenciadorMemoria, GerenciadorLocal):
         super(FifoLocal, self).__init__(simulador)
         self.processos_na_mp = queue()
         self.quadros_por_processo()
-        for i, processo in enumerate(self.simulador.processos):
+        for i, processo in self.simulador.processos.items():
             processo.ponteiro = -1
             processo.conjunto_residente = []
 
@@ -68,3 +68,15 @@ class FifoLocal(GerenciadorMemoria, GerenciadorLocal):
             pagina,
             entrada_tp=entrada_tp
         )
+
+    def criar_processo(self, processo):
+        processo.ponteiro = -1
+        processo.conjunto_residente = []
+        self.quadros_para_processo(processo)
+
+    # --- terminar ---
+    def desalocar_quadro(self, quadro, remover=False):
+        # avança ponteiro (e volta para 0 se passar do numero de quadros)
+        super(FifoGlobal, self).desalocar_quadro(quadro, remover)
+        if self.ponteiro == quadro:
+            self.ponteiro = (self.ponteiro + 1) % len(self.simulador.quadros)

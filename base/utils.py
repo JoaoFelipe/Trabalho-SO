@@ -36,5 +36,5 @@ class HistoricoQuadros(list):
     def append(self, x):
         super(HistoricoQuadros, self).append(x)
         self.historico.append(self.simulador.quadros[:])
-        self.historico_tp.append({pagina: copy(pagina.entrada_tp) for processo in self.simulador.processos for pagina in processo.paginas})
+        self.historico_tp.append({pagina: copy(pagina.entrada_tp) for processo in self.simulador.processos.values() for pagina in processo.paginas})
 

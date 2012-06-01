@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from math import log
+from collections import OrderedDict
 from base.processo import Processo
 from base.mensagem import EnderecoMensagem, TerminouMensagem
 from base.utils import HistoricoQuadros
@@ -42,7 +43,7 @@ class Simulador(object):
         self.tamanho_memoria_secundaria = memoria_secundaria
         self.mudancas = HistoricoQuadros(self)
         # Monta lista de processos pelos tamanhos dos processos - Pode representar a memoria secundaria
-        self.processos = [Processo(i, processos[i], pagina) for i in xrange(len(processos))]
+        self.processos = OrderedDict([(i, Processo(i, processos[i], pagina)) for i in xrange(len(processos))])
 
         # Monta a lista de quadros - representa a memoria principal
         self.quadros = [None] * (memoria_fisica / pagina)
@@ -85,3 +86,10 @@ class Simulador(object):
             self.acessar(self.linhas[self.ponteiro])
         else:
             self.mudancas.append(TerminouMensagem())
+
+    def add_processo(self, identificador, tamanho):
+        self.processos[identificador] = Processo(identificador, tamanho, self.tamanho_pagina)
+        return self.processos[identificador]
+
+    def remover_processo(self, processo):
+        del self.processos[processo.identificador]

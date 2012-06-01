@@ -61,3 +61,19 @@ class QuadroAcessadoMensagem(EqualByUnicode):
 
     def __unicode__(self):
         return u"Quadro com página %s do processo %s foi acessado" % (self.pagina.numero, self.pagina.processo.identificador)
+
+
+class CriarProcessoMensagem(EqualByUnicode):
+    def __init__(self, processo):
+        self.processo = processo
+
+    def __unicode__(self):
+        return u"Processo P%s foi criado" % (self.processo.identificador)
+
+
+class RemoverProcessoMensagem(EqualByUnicode):
+    def __init__(self, processo):
+        self.processo = processo
+
+    def __unicode__(self):
+        return u"Processo P%s foi removido" % (self.processo.identificador)

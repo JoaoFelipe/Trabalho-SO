@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from base.mensagem import QuadroModificadoMensagem
-from base.mensagem import CarregadaMensagem, ModificadaMensagem, QuadroDesalocadoMensagem, QuadroAcessadoMensagem
-from base.utils import teto_inteiro
+from base.mensagem import CarregadaMensagem, ModificadaMensagem, QuadroDesalocadoMensagem, QuadroAcessadoMensagem, CriarProcessoMensagem, RemoverProcessoMensagem
 
 
 LIMITE = 0.4
@@ -20,24 +19,51 @@ class GerenciadorMemoria(object):
         """
         pass
 
+    def criar_processo(self, processo):
+        """
+        Implementa a criacao de processo específica de cada política
+        """
+        pass
+
+    def remover_processo(self, processo):
+        """
+        Implementa a remocao de processo específica de cada política
+        """
+        pass
+
     def acessar(self, num_processo, tipo, endereco):
         """
         Acesso geral, usado por todas políticas de GM
         Se for acesso de modificação, seta o bit modificado
         da TP como 1
         """
-        processo = self.simulador.processos[num_processo]
-        num_pagina = self.descobre_pagina(endereco)
-        pagina = processo.paginas[num_pagina]
-        entrada_tp = processo.tabela_paginas[num_pagina]
-        self.continua_acesso(processo, pagina, entrada_tp)
-        # se página foi modificada, seta bit M para 1
-        if tipo == "W":
-            self.simulador.mudancas.append(QuadroModificadoMensagem(pagina))
-            entrada_tp.modificado = 1
-        else:
-            self.simulador.mudancas.append(QuadroAcessadoMensagem(pagina))
-        self.processo_acessado = processo
+        if tipo in ['R', 'W']:
+            processo = self.simulador.processos[num_processo]
+            self.processo_acessado = processo
+            num_pagina = self.descobre_pagina(endereco)
+            pagina = processo.paginas[num_pagina]
+            entrada_tp = processo.tabela_paginas[num_pagina]
+            self.continua_acesso(processo, pagina, entrada_tp)
+            # se página foi modificada, seta bit M para 1
+            if tipo == "W":
+                self.simulador.mudancas.append(QuadroModificadoMensagem(pagina))
+                entrada_tp.modificado = 1
+            else:
+                self.simulador.mudancas.append(QuadroAcessadoMensagem(pagina))
+        elif tipo == 'C':
+            processo = self.simulador.add_processo(num_processo, int(endereco, 2))
+            # self.processo_acessado = processo
+            self.criar_processo(processo)
+            self.simulador.mudancas.append(CriarProcessoMensagem(processo))
+        elif tipo == 'D':
+            processo = self.simulador.processos[num_processo]
+            for pagina in processo.paginas:
+                quadro = pagina.entrada_tp.quadro
+                if quadro:
+                    self.desalocar_quadro(quadro, remover=True)
+            self.simulador.remover_processo(processo)
+            self.remover_processo(processo)
+            self.simulador.mudancas.append(RemoverProcessoMensagem(processo))
 
     def descobre_pagina(self, endereco):
         """
@@ -61,7 +87,7 @@ class GerenciadorMemoria(object):
         self.simulador.mudancas.append(CarregadaMensagem(pagina))
         self.simulador.quadros[quadro] = pagina
 
-    def desalocar_quadro(self, quadro):
+    def desalocar_quadro(self, quadro, remover=False):
         """
         Desaloca quadro da MP
         Seta bit presente e modificado da pagina na TP para 0
@@ -70,7 +96,7 @@ class GerenciadorMemoria(object):
         pagina = self.simulador.quadros[quadro]
         entrada_tp = pagina.entrada_tp
         # se for modificada, salva na memória secundária
-        if entrada_tp.modificado:
+        if entrada_tp.modificado and not remover:
             self.simulador.mudancas.append(ModificadaMensagem(pagina))
         # reseta informacoes da página retirada
         self.simulador.mudancas.append(QuadroDesalocadoMensagem(pagina))
@@ -158,6 +184,16 @@ class GerenciadorLocal(object):
         Calcula quantidade de quadros por processo,
         Tomando como base o espaço disponível em MP e o número
         de páginas dos dos processos a serem executados
+        """
+        simulador = self.simulador
+        for processo in simulador.processos.values():
+            self.quadros_para_processo(processo)
+
+    def quadros_para_processo(self, processo):
+        """
+        Calcula quantidade de quadros para processo,
+        Tomando como base o espaço disponível em MP e o número
+        de páginas do processo
 
         razao = (total de paginas do processo) / (numero de quadros da MP)
         se razao < LIMITE (0.4), então
@@ -166,11 +202,10 @@ class GerenciadorLocal(object):
             numero de quadros para Px = MAIOR (0.6) * tamanho_memoria
         """
         simulador = self.simulador
-        for processo in simulador.processos:
-            tamanho_processo = float(len(processo.paginas))
-            tamanho_memoria = len(simulador.quadros)
-            razao = tamanho_processo / tamanho_memoria
-            if razao < LIMITE:
-                processo.maximo_quadros = int(round(tamanho_memoria * MENOR))
-            else:
-                processo.maximo_quadros = int(round(tamanho_memoria * MAIOR))
+        tamanho_processo = float(len(processo.paginas))
+        tamanho_memoria = len(simulador.quadros)
+        razao = tamanho_processo / tamanho_memoria
+        if razao < LIMITE:
+            processo.maximo_quadros = int(round(tamanho_memoria * MENOR))
+        else:
+            processo.maximo_quadros = int(round(tamanho_memoria * MAIOR))

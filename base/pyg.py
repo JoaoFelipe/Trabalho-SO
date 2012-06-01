@@ -38,6 +38,7 @@ TEMPO_ANIMACAO = 60
 
 ALTURA_INSTRUCAO = int(0.025 * HEIGHT)
 
+
 class Button(namedtuple('Button', ['x', 'y', 'width', 'height', 'function'])):
 
     def __contains__(self, clique):
@@ -129,14 +130,16 @@ class MovimentoAcessar(namedtuple('MovimentoAcessar', ['pagina', 'xi', 'yi', 'xf
 
 
 #Faz cores aleatórias para cada processo
-def calcular_cor(num, processos):
+def calcular_cor(num, numero_processos):
+    if numero_processos < 50:
+        numero_processos = 50
     to_bin = lambda x: bin(x)[2:]
 
     cor = list(to_bin(int('FFFFFF', 16)))
 
     index = 0
     numb = to_bin(num)
-    numb = "0" * (len(to_bin(processos)) - len(numb)) + numb
+    numb = "0" * (len(to_bin(numero_processos)) - len(numb)) + numb
     for l in numb:
         cor[index] = str(int(cor[index] == l))
         index = index + 8
@@ -169,17 +172,17 @@ class PygameInterface(object):
         self.pagina_atual = None
         self.mensagem = ""
         self.passo = 0
-        # while self.passo < 0:
-        #     self.passo += 1
-        #     self.pagina_atual = None
-        #     self.simulador.next()
+        while self.passo < 10:
+            self.passo += 1
+            self.pagina_atual = None
+            self.simulador.next()
         self.estado = 0
 
-        self.processo_selecionado = self.simulador.processos[0]
+        self.processo_selecionado = self.simulador.processos.values()[0]
 
         # Usado para calcular o scroll máximo
-        self.final_MP = -max(self.imprimir_MP(), self.imprimir_MS()) + self.height
-        self.final_TP = self.imprimir_TP(max(self.simulador.processos, key=lambda x: len(x.paginas)))
+        self.final_MP = -max(self.imprimir_MP(), self.imprimir_MS()) + self.height - TAMANHO_MENSAGEM
+        self.final_TP = self.imprimir_TP(max(self.simulador.processos.values(), key=lambda x: len(x.paginas)))
 
         self.velocidade_scroll = 10
         self.scroll_pressionado = 0
@@ -239,6 +242,10 @@ class PygameInterface(object):
                 xi, yi = self.posicao_de_pagina_na_MP(atual.pagina, quadros)
                 self.movimento = MovimentoAcessar(atual.pagina, xi, yi, xi + LARGURA_BLOCO, yi + ALTURA_BLOCO)
                 self.pagina_atual = atual.pagina
+            elif type(atual) == CriarProcessoMensagem:
+                self.quadros_aparentes([1])
+                self.final_MP = -max(self.imprimir_MP(), self.imprimir_MS()) + self.height - TAMANHO_MENSAGEM
+                self.final_TP = self.imprimir_TP(max(self.simulador.processos.values(), key=lambda x: len(x.paginas)))
             else:
                 self.quadros_aparentes([1])
 
@@ -252,7 +259,7 @@ class PygameInterface(object):
             break
         if not self.quadros:
             self.quadros = self.simulador.quadros
-            self.tp = {pagina: pagina.entrada_tp  for processo in self.simulador.processos for pagina in processo.paginas}
+            self.tp = {pagina: pagina.entrada_tp  for i, processo in self.simulador.processos.items() for pagina in processo.paginas}
 
     def imprimir_pagina(self, pagina, x, y):
         centerx = x + LARGURA_BLOCO / 2
@@ -271,7 +278,7 @@ class PygameInterface(object):
         self.imprimir_bloco(x, y, cor)
         if not pagina == None:
             self.imprimir_pagina(pagina, x, y)
-            if self.tp[pagina].modificado and alteracao:
+            if alteracao and self.tp[pagina].modificado:
                 xi = x + MODIFICADO + 1
                 yi = y + self.scroll + 1
                 tx = x + LARGURA_BLOCO - 1
@@ -325,7 +332,7 @@ class PygameInterface(object):
         textrect = text.get_rect(centerx=POSICAO_MS + LARGURA_BLOCO / 2, centery=self.scroll + ALTURA_BLOCO / 2)
         self.screen.blit(text, textrect)
         y = ALTURA_BLOCO
-        for i, processo in enumerate(self.simulador.processos):
+        for i, processo in self.simulador.processos.items():
             inicio = y
             for j, pagina in enumerate(processo.paginas):
                 self.imprimir_bloco_de_pagina(pagina, POSICAO_MS, y, alteracao=False)
@@ -372,8 +379,6 @@ class PygameInterface(object):
             self.screen.blit(text, textrect)
             y += 20
 
-       
-
         return y
 
     def imprimir_mensagem(self):
@@ -407,7 +412,7 @@ class PygameInterface(object):
 
     def posicao_de_pagina_na_MS(self, pagina):
         y = ALTURA_BLOCO
-        for i, processo in enumerate(self.simulador.processos):
+        for i, processo in self.simulador.processos.items():
             for j, p in enumerate(processo.paginas):
                 if p == pagina:
                     return (POSICAO_MS, y)
@@ -490,7 +495,7 @@ class PygameInterface(object):
             self.imprimir()
             self.animacao()
             self.imprimir_mensagem()
-            # text = self.font.render(unicode(self.passo)+' '+unicode(self.estado)+' '+unicode(self.tempo)+unicode(self.mensagem), 1, BRANCO)
+            # text = self.font.render(unicode(self.passo) + ' ' + unicode(self.estado) + ' ' + unicode(self.tempo) + unicode(self.mensagem), 1, BRANCO)
             # textrect = text.get_rect(center=(300, 300))
             # self.screen.blit(text, textrect)
             pygame.display.flip()

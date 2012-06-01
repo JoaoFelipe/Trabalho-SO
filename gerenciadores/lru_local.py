@@ -9,7 +9,7 @@ class LRULocal(GerenciadorMemoria, GerenciadorLocal):
         super(LRULocal, self).__init__(simulador)
         self.processos_na_mp = deque()
         self.quadros_por_processo()
-        for i, processo in enumerate(self.simulador.processos):
+        for i, processo in self.simulador.processos.items():
             processo.referencias = deque()
             processo.conjunto_residente = []
 
@@ -68,3 +68,8 @@ class LRULocal(GerenciadorMemoria, GerenciadorLocal):
             entrada_tp=entrada_tp
         )
         processo.referencias.append(quadro)
+
+    def criar_processo(self, processo):
+        processo.referencias = deque()
+        processo.conjunto_residente = []
+        self.quadros_para_processo(processo)
