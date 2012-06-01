@@ -37,6 +37,7 @@ class GerenciadorMemoria(object):
             entrada_tp.modificado = 1
         else:
             self.simulador.mudancas.append(QuadroAcessadoMensagem(pagina))
+        self.processo_acessado = processo
 
     def descobre_pagina(self, endereco):
         """

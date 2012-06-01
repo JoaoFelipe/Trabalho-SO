@@ -437,6 +437,7 @@ class PygameInterface(object):
                 if event.key == K_RIGHT:
                     self.passo += 1
                     self.simulador.next()
+                    self.processo_selecionado = self.simulador.gerenciador_memoria.processo_acessado
                     self.estado = 0
                 self.scroll_pressionado = 0
 
