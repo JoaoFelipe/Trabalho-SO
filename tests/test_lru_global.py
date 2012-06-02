@@ -1,10 +1,12 @@
 import unittest
+from collections import deque
 from base.simulador import Simulador
-from base.mensagem import CarregadaMensagem, ModificadaMensagem, QuadroAcessadoMensagem
-from gerenciadores.fifo_global import FifoGlobal
+from base.mensagem import CarregadaMensagem, ModificadaMensagem
+from base.mensagem import QuadroAcessadoMensagem
+from gerenciadores.lru_global import LRUGlobal
 
 
-class TestFifoGlobal(unittest.TestCase):
+class TestLRUGlobal(unittest.TestCase):
 
     def setUp(self):
         tamanhos = {
@@ -15,7 +17,15 @@ class TestFifoGlobal(unittest.TestCase):
             'processos': [7000, 2000, 3000, 5000, 7000, 2000, 8000, 9000],
         }
 
-        self.simulador = Simulador(gerenciador_memoria=FifoGlobal, **tamanhos)
+        self.simulador = Simulador(gerenciador_memoria=LRUGlobal, **tamanhos)
+
+    def test_desalocar_quadro(self):
+        simulador = self.simulador
+        gm = simulador.gerenciador_memoria
+        p0_pag0 = simulador.processos[0].paginas[0]
+        simulador.gerenciador_memoria.alocar_pagina_no_quadro(0, p0_pag0)
+        gm.desalocar_quadro(0)
+        self.assertEqual(deque(), gm.referencias)
 
     def test_acessa_pagina_que_nao_esta_na_mp(self):
         simulador = self.simulador
@@ -37,12 +47,14 @@ class TestFifoGlobal(unittest.TestCase):
         p0_pag0 = simulador.processos[0].paginas[0]
         self.assertIn(QuadroAcessadoMensagem(p0_pag0), simulador.mudancas)
 
-    def test_acessa_pagina_fora_da_mp_com_mp_cheia_ponteiro_inicio(self):
+    def test_acessa_pagina_fora_da_mp_com_mp_cheia_deque_na_ordem(self):
         simulador = self.simulador
-        p0_pag0 = simulador.processos[0].paginas[0]
-        p0_pag1 = simulador.processos[0].paginas[1]
-        p0_pag2 = simulador.processos[0].paginas[2]
-        p0_pag3 = simulador.processos[0].paginas[3]
+        gm = simulador.gerenciador_memoria
+        processo = simulador.processos[0]
+        p0_pag0 = processo.paginas[0]
+        p0_pag1 = processo.paginas[1]
+        p0_pag2 = processo.paginas[2]
+        p0_pag3 = processo.paginas[3]
         simulador.gerenciador_memoria.alocar_pagina_no_quadro(0, p0_pag0)
         simulador.gerenciador_memoria.alocar_pagina_no_quadro(1, p0_pag1)
         simulador.gerenciador_memoria.alocar_pagina_no_quadro(2, p0_pag2)
@@ -51,10 +63,11 @@ class TestFifoGlobal(unittest.TestCase):
         simulador.next()
         p0_pag6 = simulador.processos[0].paginas[6]
         self.assertIn(CarregadaMensagem(p0_pag6), simulador.mudancas)
-        self.assertEqual(1, simulador.gerenciador_memoria.ponteiro)
+        self.assertEqual(deque([1, 2, 3, 0]), gm.referencias)
 
-    def test_acessa_pagina_fora_da_mp_com_mp_cheia_ponteiro_final(self):
+    def test_acessa_pagina_fora_da_mp_com_mp_cheia_deque_fora_de_ordem(self):
         simulador = self.simulador
+        gm = simulador.gerenciador_memoria
         p0_pag0 = simulador.processos[0].paginas[0]
         p0_pag1 = simulador.processos[0].paginas[1]
         p0_pag2 = simulador.processos[0].paginas[2]
@@ -63,15 +76,16 @@ class TestFifoGlobal(unittest.TestCase):
         simulador.gerenciador_memoria.alocar_pagina_no_quadro(1, p0_pag1)
         simulador.gerenciador_memoria.alocar_pagina_no_quadro(2, p0_pag2)
         simulador.gerenciador_memoria.alocar_pagina_no_quadro(3, p0_pag3)
+        gm.referencias = deque([2, 0, 1, 3])
         simulador.linhas = ["P0 R (6500)2"]
-        simulador.gerenciador_memoria.ponteiro = 3
         simulador.next()
         p0_pag6 = simulador.processos[0].paginas[6]
         self.assertIn(CarregadaMensagem(p0_pag6), simulador.mudancas)
-        self.assertEqual(0, simulador.gerenciador_memoria.ponteiro)
+        self.assertEqual(deque([0, 1, 3, 2]), gm.referencias)
 
     def test_retira_pagina_modificada(self):
         simulador = self.simulador
+        gm = simulador.gerenciador_memoria
         p0_pag0 = simulador.processos[0].paginas[0]
         p0_pag1 = simulador.processos[0].paginas[1]
         p0_pag2 = simulador.processos[0].paginas[2]
@@ -81,8 +95,10 @@ class TestFifoGlobal(unittest.TestCase):
         simulador.gerenciador_memoria.alocar_pagina_no_quadro(2, p0_pag2)
         simulador.gerenciador_memoria.alocar_pagina_no_quadro(3, p0_pag3)
         p0_pag0.entrada_tp.modificado = 1
+        gm.referencias = deque([0, 1, 2, 3])
         simulador.linhas = ["P0 R (6500)2"]
         simulador.next()
         p0_pag6 = simulador.processos[0].paginas[6]
         self.assertIn(CarregadaMensagem(p0_pag6), simulador.mudancas)
         self.assertIn(ModificadaMensagem(p0_pag0), simulador.mudancas)
+        self.assertEqual(deque([1, 2, 3, 0]), gm.referencias)

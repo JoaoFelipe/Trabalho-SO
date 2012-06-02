@@ -8,21 +8,10 @@ class LRULocal(GerenciadorMemoria, GerenciadorLocal):
     def __init__(self, simulador):
         super(LRULocal, self).__init__(simulador)
         self.processos_na_mp = deque()
-        self.quadros_por_processo()
-        for i, processo in self.simulador.processos.items():
-            processo.referencias = deque()
-            processo.conjunto_residente = []
+        for processo in self.simulador.processos.values():
+            self.criar_processo(processo)
 
-    def substitui_pagina_lru(self, processo, pagina):
-        """
-        Seleciona quadro a ser retirado pela política LRU
-        Retira a página do quadros
-        Aloca nova pagina ao quadro
-        """
-        vazio = self.retira_pagina_lru(processo)
-        self.alocar_pagina_no_quadro(vazio, pagina)
-
-    def retira_pagina_lru(self, processo):
+    def retira_pagina(self, processo):
         """
         Seleciona quadro do inicio da fila de referencias para desalocar
         Desaloca pagina do quadro selecionado
@@ -31,14 +20,11 @@ class LRULocal(GerenciadorMemoria, GerenciadorLocal):
         self.desalocar_quadro(vazio)
         return vazio
 
-    def suspender_processo(self, processo):
+    def suspender_processo(self, processo, remover=False):
         """
-        Sobreescrevendo método de suspender processo para atualizar:
-        -lista de quadros em MP (deixar vazia)
-        -ponteiro do processo na lista de ponteiros (deixar == -1)
+        Apaga conjunto_residente e referencias ao suspender_processo
         """
-        super(LRULocal, self).suspender_processo(processo)
-        self.processos_na_mp.remove(processo)
+        super(LRULocal, self).suspender_processo(processo, remover=remover)
         processo.conjunto_residente = []
         processo.referencias = deque()
 
@@ -70,6 +56,27 @@ class LRULocal(GerenciadorMemoria, GerenciadorLocal):
         processo.referencias.append(quadro)
 
     def criar_processo(self, processo):
+        """
+        Cria processo, definindo deque de referencias vazio e
+        conjunto_residente vazio
+        Também define o numero maximo de quadros para o processos
+        """
         processo.referencias = deque()
         processo.conjunto_residente = []
         self.quadros_para_processo(processo)
+
+    def desalocar_quadro(self, quadro, remover=False):
+        """
+        Remove quadro do conjunto_residente do processo
+        Remove processo da fila de processos na mp, se não sobrarem quadros do processo na MP
+        """
+        pagina = self.simulador.quadros[quadro]
+        super(LRULocal, self).desalocar_quadro(quadro, remover)
+        if pagina:
+            processo = pagina.processo
+            if quadro in processo.referencias:
+                processo.referencias.remove(quadro)
+            if processo.estaSuspenso() and processo in self.processos_na_mp:
+                self.processos_na_mp.remove(processo)
+                processo.conjunto_residente = []
+                processo.referencias = deque()

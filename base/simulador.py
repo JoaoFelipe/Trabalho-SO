@@ -9,21 +9,21 @@ from gerenciadores.gerenciador_memoria import GerenciadorMemoria
 
 
 class TamanhoMemoriaFisicaException(Exception):
-    def __str__(self):
-        return "O Tamanho da memória física deve ser múltiplo do quadro"
+    def __unicode__(self):
+        return u"O Tamanho da memória física deve ser múltiplo do quadro"
 
 
 class TamanhoMemoriaSecundariaException(Exception):
-    def __str__(self):
-        return "O Tamanho da memória secundária não é suficiente para alocar todos processos"
+    def __unicode__(self):
+        return u"O Tamanho da memória secundária não é suficiente para alocar todos processos"
 
 
 class EnderecoLogicoInvalidoException(Exception):
     def __init__(self, endereco):
         self.endereco = endereco
 
-    def __str__(self):
-        return "O endereco lógico %s é maior do que o tamanho do endereço lógico" % (self.endereco)
+    def __unicode__(self):
+        return u"O endereco lógico %s é maior do que o tamanho do endereço lógico" % (self.endereco)
 
 
 class Simulador(object):

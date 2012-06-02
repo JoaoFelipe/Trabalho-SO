@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import unittest
 from base.simulador import Simulador, TamanhoMemoriaFisicaException
 from base.simulador import TamanhoMemoriaSecundariaException, EnderecoLogicoInvalidoException
@@ -33,11 +35,19 @@ class TestSimulador(unittest.TestCase):
         self.tamanhos['memoria_fisica'] = self.tamanhos['memoria_fisica'] - 1
         with self.assertRaises(TamanhoMemoriaFisicaException):
             Simulador(**self.tamanhos)
+        try:
+            Simulador(**self.tamanhos)
+        except TamanhoMemoriaFisicaException as f:
+            self.assertEqual(u"O Tamanho da memória física deve ser múltiplo do quadro", unicode(f))
 
     def test_erroAoCriarSimuladorComTamanhoDaMemoriaSecundariaNaoSuficiente(self):
         self.tamanhos['memoria_secundaria'] = 1
         with self.assertRaises(TamanhoMemoriaSecundariaException):
             Simulador(**self.tamanhos)
+        try:
+            Simulador(**self.tamanhos)
+        except TamanhoMemoriaSecundariaException as f:
+            self.assertEqual(u"O Tamanho da memória secundária não é suficiente para alocar todos processos", unicode(f))
 
     def test_acessarP1_R_10(self):
         self.tamanhos['endereco_logico'] = 8
@@ -59,7 +69,7 @@ class TestSimulador(unittest.TestCase):
         simulador = Simulador(**self.tamanhos)
         with self.assertRaises(EnderecoLogicoInvalidoException):
             simulador.acessar('P1 R 100')
-
-
-if __name__ == '__main__':
-    unittest.main()
+        try:
+            simulador.acessar('P1 R 100')
+        except EnderecoLogicoInvalidoException as f:
+            self.assertEqual(u"O endereco lógico 100 é maior do que o tamanho do endereço lógico", unicode(f))

@@ -1,11 +1,13 @@
+# -*- coding: utf-8 -*-
 import unittest
 from collections import deque
 from base.simulador import Simulador
-from base.mensagem import CarregadaMensagem, ModificadaMensagem, QuadroAcessadoMensagem
-from gerenciadores.fifo_local_fixo import FifoLocalFixo
+from base.mensagem import CarregadaMensagem, ModificadaMensagem
+from base.mensagem import QuadroAcessadoMensagem
+from gerenciadores.lru_local_fixo import LRULocalFixo
 
 
-class TestFifoLocalFixo(unittest.TestCase):
+class TestLRULocalFixo(unittest.TestCase):
 
     def setUp(self):
         tamanhos = {
@@ -16,7 +18,10 @@ class TestFifoLocalFixo(unittest.TestCase):
             'processos': [7000, 2000, 3000, 8000, 9000, 2000, 8000, 9000],
         }
 
-        self.simulador = Simulador(gerenciador_memoria=FifoLocalFixo, **tamanhos)
+        self.simulador = Simulador(
+            gerenciador_memoria=LRULocalFixo,
+            **tamanhos
+        )
 
     def test_acessa_pagina_que_esta_na_mp(self):
         simulador = self.simulador
@@ -27,7 +32,7 @@ class TestFifoLocalFixo(unittest.TestCase):
         simulador.next()
         self.assertIn(QuadroAcessadoMensagem(p0_pag0), simulador.mudancas)
 
-    def test_acessa_pagina_que_nao_esta_na_mp_de_processo_que_esta_na_mp_ponteiro_0(self):
+    def test_acessa_pagina_que_nao_esta_na_mp_de_processo_que_esta_na_mp(self):
         simulador = self.simulador
         gm = simulador.gerenciador_memoria
         processo = simulador.processos[0]
@@ -41,16 +46,16 @@ class TestFifoLocalFixo(unittest.TestCase):
         self.assertIn(CarregadaMensagem(p0_pag2), simulador.mudancas)
         self.assertEqual(0, p0_pag2.entrada_tp.quadro)
         self.assertEqual(1, p0_pag2.entrada_tp.presente)
-        self.assertEqual(1, processo.ponteiro)
+        self.assertEqual(deque([1, 0]), processo.referencias)
 
-    def test_acessa_pagina_que_nao_esta_na_mp_de_processo_que_esta_na_mp_ponteiro_1_max_quadros_1(self):
+    def test_acessa_pagina_que_n_esta_na_mp_de_processo_na_mp_ordem(self):
         simulador = self.simulador
         gm = simulador.gerenciador_memoria
         processo = simulador.processos[0]
         p0_pag0, p0_pag1, p0_pag2 = simulador.processos[0].paginas[:3]
         gm.alocar_pagina_no_quadro(0, p0_pag0)
         gm.alocar_pagina_no_quadro(1, p0_pag1)
-        processo.ponteiro = 1
+        processo.referencias = deque([1, 0])
         processo.maximo_quadros = 2
         p0_pag1.entrada_tp.modificado = 1
         simulador.linhas = ["P0 R (2049)2"]
@@ -61,7 +66,7 @@ class TestFifoLocalFixo(unittest.TestCase):
         self.assertIn(ModificadaMensagem(p0_pag1), simulador.mudancas)
         self.assertEqual(1, p0_pag2.entrada_tp.quadro)
         self.assertEqual(1, p0_pag2.entrada_tp.presente)
-        self.assertEqual(0, processo.ponteiro)
+        self.assertEqual(deque([0, 1]), processo.referencias)
 
     def test_acessa_pagina_de_processo_suspenso(self):
         simulador = self.simulador
@@ -86,5 +91,4 @@ class TestFifoLocalFixo(unittest.TestCase):
         self.assertEqual([0, 1, 2], p2.conjunto_residente)
         self.assertEqual([], p1.conjunto_residente)
         self.assertEqual([], p0.conjunto_residente)
-        self.assertEqual(0, p2.ponteiro)
-
+        self.assertEqual(deque([1, 2, 0]), p2.referencias)

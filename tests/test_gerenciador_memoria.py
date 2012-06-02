@@ -1,6 +1,6 @@
 import unittest
 from base.simulador import Simulador
-from base.mensagem import QuadroModificadoMensagem, CarregadaMensagem, ModificadaMensagem
+from base.mensagem import QuadroDesalocadoMensagem, QuadroModificadoMensagem, RemoverProcessoMensagem, CriarProcessoMensagem, CarregadaMensagem, TerminouMensagem, ModificadaMensagem
 
 
 class TestGerenciadorMemoria(unittest.TestCase):
@@ -24,6 +24,33 @@ class TestGerenciadorMemoria(unittest.TestCase):
         self.assertIn(QuadroModificadoMensagem(p0_pag0), simulador.mudancas)
         self.assertEquals(1, p0_pag0.entrada_tp.modificado)
 
+    def test_execucao_finalizada(self):
+        simulador = self.simulador
+        simulador.linhas = []
+        simulador.next()
+        self.assertIn(TerminouMensagem(), simulador.mudancas)
+
+    def test_criar_processo(self):
+        simulador = self.simulador
+        simulador.linhas = ["P8 C (2000)2"]
+        simulador.next()
+        self.assertEqual(2, len(simulador.processos.values()[-1].paginas))
+        self.assertIn(CriarProcessoMensagem(simulador.processos.values()[-1]), simulador.mudancas)
+
+    def test_remover_processo(self):
+        simulador = self.simulador
+        gm = simulador.gerenciador_memoria
+        simulador.linhas = ["P7 D (0)2"]
+        processo = simulador.processos.values()[-1]
+        pagina = processo.paginas[0]
+        pagina.entrada_tp.modificado = 1
+        gm.alocar_pagina_no_quadro(0, pagina)
+        simulador.next()
+        self.assertEqual(8, len(simulador.processos.values()[-1].paginas))
+        self.assertIn(RemoverProcessoMensagem(processo), simulador.mudancas)
+        self.assertIn(QuadroDesalocadoMensagem(pagina), simulador.mudancas)
+        self.assertNotIn(ModificadaMensagem(pagina), simulador.mudancas)
+
     def test_descobre_pagina(self):
         simulador = self.simulador
         gm = simulador.gerenciador_memoria
@@ -38,11 +65,15 @@ class TestGerenciadorMemoria(unittest.TestCase):
         simulador = self.simulador
         gm = simulador.gerenciador_memoria
         p0_pag0 = simulador.processos[0].paginas[0]
+        p0_pag1 = simulador.processos[0].paginas[1]
         gm.alocar_pagina_no_quadro(0, p0_pag0)
         self.assertEqual(0, p0_pag0.entrada_tp.quadro)
         self.assertEqual(1, p0_pag0.entrada_tp.presente)
         self.assertEqual(p0_pag0, simulador.quadros[0])
         self.assertIn(CarregadaMensagem(p0_pag0), simulador.mudancas)
+        self.assertNotIn(QuadroDesalocadoMensagem(p0_pag0), simulador.mudancas)
+        gm.alocar_pagina_no_quadro(0, p0_pag1)
+        self.assertIn(QuadroDesalocadoMensagem(p0_pag0), simulador.mudancas)
 
     def test_desalocar_quadro_sem_modificacao(self):
         simulador = self.simulador
@@ -169,10 +200,18 @@ class TestGerenciadorMemoria(unittest.TestCase):
         ]
         self.assertEqual(memoria, simulador.quadros)
 
+    def test_alocar_n_paginas_sem_ordem(self):
+        simulador = self.simulador
+        gm = simulador.gerenciador_memoria
+        p0 = simulador.processos[0]
+        gm.alocar_n_paginas(p0, 0, 4)
+        p0_pag0, p0_pag1, p0_pag2, p0_pag3 = p0.paginas[:4]
+        self.assertEqual(4, simulador.quadros.count(None))
+
     def test_alocar_n_paginas_com_ordem(self):
         simulador = self.simulador
         gm = simulador.gerenciador_memoria
-        p0, p1, p2 = simulador.processos[:3]
+        p0, p1, p2 = simulador.processos.values()[:3]
         gm.alocar_n_paginas(p0, 0, 4, [])
         gm.alocar_n_paginas(p1, 0, 2, [p0])
         p0_pag0, p0_pag1, p0_pag2, p0_pag3 = p0.paginas[:4]
@@ -205,7 +244,7 @@ class TestGerenciadorMemoria(unittest.TestCase):
     def test_alocar_n_paginas_com_ordem_sem_suspender_processo(self):
         simulador = self.simulador
         gm = simulador.gerenciador_memoria
-        p0, p1 = simulador.processos[:2]
+        p0, p1 = simulador.processos.values()[:2]
         gm.alocar_n_paginas(p0, 0, 4, [])
         gm.alocar_n_paginas(p1, 0, 2, [p0])
         p0_pag0, p0_pag1, p0_pag2, p0_pag3 = p0.paginas[:4]
@@ -239,7 +278,7 @@ class TestGerenciadorMemoria(unittest.TestCase):
         simulador = self.simulador
         simulador.quadros = [None] * 6
         gm = simulador.gerenciador_memoria
-        p0, p1 = simulador.processos[:2]
+        p0, p1 = simulador.processos.values()[:2]
         gm.alocar_n_paginas(p0, 0, 4, [])
         gm.alocar_n_paginas(p1, 0, 2, [p0])
         p0_pag0, p0_pag1, p0_pag2, p0_pag3 = p0.paginas[:4]
@@ -268,7 +307,7 @@ class TestGerenciadorMemoria(unittest.TestCase):
     def test_alocar_n_paginas_restaurar_ordem(self):
         simulador = self.simulador
         gm = simulador.gerenciador_memoria
-        p0, p1, p2 = simulador.processos[:3]
+        p0, p1, p2 = simulador.processos.values()[:3]
         gm.alocar_n_paginas(p0, 0, 4, [])
         gm.alocar_n_paginas(p1, 0, 2, [p0])
         p0_pag0, p0_pag1, p0_pag2, p0_pag3 = p0.paginas[:4]
@@ -312,6 +351,3 @@ class TestGerenciadorMemoria(unittest.TestCase):
         ]
         self.assertEqual(memoria, simulador.quadros)
         self.assertEqual([p2, p0], ordem)
-
-if __name__ == '__main__':
-    unittest.main()

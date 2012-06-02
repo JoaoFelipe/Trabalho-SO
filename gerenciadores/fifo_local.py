@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from collections import deque as queue
+from collections import deque
 from gerenciadores.gerenciador_memoria import GerenciadorMemoria, GerenciadorLocal
 
 
@@ -7,59 +7,41 @@ class FifoLocal(GerenciadorMemoria, GerenciadorLocal):
 
     def __init__(self, simulador):
         super(FifoLocal, self).__init__(simulador)
-        self.processos_na_mp = queue()
-        self.quadros_por_processo()
-        for i, processo in self.simulador.processos.items():
-            processo.ponteiro = -1
-            processo.conjunto_residente = []
+        self.processos_na_mp = deque()
+        for processo in self.simulador.processos.values():
+            self.criar_processo(processo)
 
-    def substitui_pagina_fifo(self, processo, pagina):
-        """
-        Seleciona quadro a ser retirado pela política FIFO
-        Retira a página do quadros
-        Aloca nova pagina ao quadro
-        """
-        vazio = self.retira_pagina_fifo(processo)
-        self.alocar_pagina_no_quadro(vazio, pagina)
-
-    def retira_pagina_fifo(self, processo):
+    def retira_pagina(self, processo):
         """
         Seleciona quadro do ponteiro para desalocar
         Avança ponteiro (e volta para 0 se passar do numero de quadros)
         Desaloca pagina do quadro selecionado
         """
         vazio = processo.conjunto_residente[processo.ponteiro]
-        processo.ponteiro = (processo.ponteiro + 1) % processo.maximo_quadros
         self.desalocar_quadro(vazio)
         return vazio
 
-    def suspender_processo(self, processo):
+    def suspender_processo(self, processo, remover=False):
         """
-        Sobreescrevendo método de suspender processo para atualizar:
-        -lista de quadros em MP (deixar vazia)
-        -ponteiro do processo na lista de ponteiros (deixar == -1)
+        Suspende processo e apaga conjunto residente
         """
-        super(FifoLocal, self).suspender_processo(processo)
+        super(FifoLocal, self).suspender_processo(processo, remover=remover)
         processo.conjunto_residente = []
         processo.ponteiro = -1
 
     def alocar_pagina_no_quadro(self, quadro, pagina, entrada_tp=None):
         """
-        Sobreescrevendo método de alocar página para:
+        Aloca pagina no quadro pelo FIFO
 
-        --definir que se uma página de um processo suspenso for carregada,
-        o processo deixa de ser suspenso:
-        ----é adicionado a uma fila de processos, para FIFO de processos
-        ----ponteiro interno dele passa a ser 0, para a FIFO interna de páginas
+        Se pagina de processo suspenso for carregada, processo deixa de ser suspenso
+        -> processo adicionado na fila de processos
+        -> ponteiro da fila de páginas definido
 
-        --definir que se um quadro que não estava no conjunto residente
-        for alocado ao processo, ele deve entrar no conjunto residente
-        (isso é válido para quando o processo está sendo carregado,
-        a FIFO interna segue a ordem de adição ao conjunto residente)
+        Se quadro não estiver no conjunto residente, adicioná-lo
         """
         processo = pagina.processo
         if processo.estaSuspenso():
-            self.processos_na_mp.appendleft(processo)
+            self.processos_na_mp.append(processo)
             processo.ponteiro = 0
         if quadro not in processo.conjunto_residente:
             processo.conjunto_residente.append(quadro)
@@ -70,13 +52,27 @@ class FifoLocal(GerenciadorMemoria, GerenciadorLocal):
         )
 
     def criar_processo(self, processo):
+        """
+        Cria processo, definindo ponteiro inicial como -1
+        e conjunto_residente vazio
+        Também define o numero maximo de quadros para o processos
+        """
         processo.ponteiro = -1
         processo.conjunto_residente = []
         self.quadros_para_processo(processo)
 
-    # --- terminar ---
     def desalocar_quadro(self, quadro, remover=False):
-        # avança ponteiro (e volta para 0 se passar do numero de quadros)
-        super(FifoGlobal, self).desalocar_quadro(quadro, remover)
-        if self.ponteiro == quadro:
-            self.ponteiro = (self.ponteiro + 1) % len(self.simulador.quadros)
+        """
+        Avança ponteiro do processo (e volta para 0 se passar do numero de quadros)
+        Remove processo da fila de processos na mp, se não sobrarem quadros do processo na MP
+        """
+        pagina = self.simulador.quadros[quadro]
+        super(FifoLocal, self).desalocar_quadro(quadro, remover)
+        if pagina:
+            processo = pagina.processo
+            if processo.ponteiro == quadro:
+                processo.ponteiro = (processo.ponteiro + 1) % len(processo.quadros)
+            if processo.estaSuspenso() and processo in self.processos_na_mp:
+                self.processos_na_mp.remove(processo)
+                processo.conjunto_residente = []
+                processo.ponteiro = -1

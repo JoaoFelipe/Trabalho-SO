@@ -43,8 +43,12 @@ class Processo(object):
         except AttributeError:
             return [entrada_tp.quadro for entrada_tp in self.tabela_paginas if entrada_tp.presente]
 
+    @property
+    def quantidade_quadros(self):
+        return len([entrada_tp.quadro for entrada_tp in self.tabela_paginas if entrada_tp.presente])
+
     def estaSuspenso(self):
-        return len(self.quadros) == 0
+        return self.quantidade_quadros == 0
 
     def add_method(self, method, name=None):
         if name is None:

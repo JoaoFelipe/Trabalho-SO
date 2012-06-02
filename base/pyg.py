@@ -172,10 +172,10 @@ class PygameInterface(object):
         self.pagina_atual = None
         self.mensagem = ""
         self.passo = 0
-        while self.passo < 10:
-            self.passo += 1
-            self.pagina_atual = None
-            self.simulador.next()
+        # while self.passo < 10:
+        #     self.passo += 1
+        #     self.pagina_atual = None
+        #     self.simulador.next()
         self.estado = 0
 
         self.processo_selecionado = self.simulador.processos.values()[0]
