@@ -324,7 +324,11 @@ class PygameInterface(object):
         for i, pagina in enumerate(self.quadros):
             self.imprimir_bloco_de_pagina(pagina, POSICAO_MP, y)
             self.imprimir_numero(y, i)
+            inicio = y
             y += ALTURA_BLOCO
+            if pagina:
+                button = Button(POSICAO_MP, inicio, LARGURA_BLOCO, y - inicio, partial(self._set_processo_selecionado, pagina.processo))
+                self.buttons.append(button)
         return y + ALTURA_BLOCO
 
     def imprimir_MS(self):
@@ -365,6 +369,13 @@ class PygameInterface(object):
             self.screen.blit(text, textrect)
             y += 20
 
+        if type(gerenciador) == FifoGlobal:
+            ponteiro = str(gerenciador.ponteiro)
+            text = self.font.render(u"Ponteiro: " + ponteiro, 1, BRANCO)
+            textrect = text.get_rect(centerx=POSICAO_TP + LARGURA_ENTRADA_TP / 2, centery=self.scroll + y)
+            self.screen.blit(text, textrect)
+            y += 20
+
         if type(gerenciador) == LRULocalFixo:
             referencias = ' '.join([str(q) for q in processo.referencias])
             text = self.font.render(u"Referencias - quadros: " + referencias, 1, BRANCO)
@@ -372,9 +383,21 @@ class PygameInterface(object):
             self.screen.blit(text, textrect)
             y += 20
 
-        if type(gerenciador) == LRULocalFixo:
             referencias = ' '.join([str(p.identificador) for p in gerenciador.processos_na_mp])
             text = self.font.render(u"Referencias - processos: " + referencias, 1, BRANCO)
+            textrect = text.get_rect(centerx=POSICAO_TP + LARGURA_ENTRADA_TP / 2, centery=self.scroll + y)
+            self.screen.blit(text, textrect)
+            y += 20
+
+        if type(gerenciador) == FifoLocalFixo:
+            ponteiro = str(processo.ponteiro)
+            text = self.font.render(u"Ponteiro: " + ponteiro, 1, BRANCO)
+            textrect = text.get_rect(centerx=POSICAO_TP + LARGURA_ENTRADA_TP / 2, centery=self.scroll + y)
+            self.screen.blit(text, textrect)
+            y += 20
+
+            referencias = ' '.join([str(p.identificador) for p in gerenciador.processos_na_mp])
+            text = self.font.render(u"Fila - processos: " + referencias, 1, BRANCO)
             textrect = text.get_rect(centerx=POSICAO_TP + LARGURA_ENTRADA_TP / 2, centery=self.scroll + y)
             self.screen.blit(text, textrect)
             y += 20
@@ -443,6 +466,8 @@ class PygameInterface(object):
                     self.passo += 1
                     self.simulador.next()
                     self.processo_selecionado = self.simulador.gerenciador_memoria.processo_acessado
+                    self.estado = 0
+                elif event.key == K_r:
                     self.estado = 0
                 self.scroll_pressionado = 0
 

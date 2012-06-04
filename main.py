@@ -13,9 +13,9 @@ if __name__ == '__main__':
     }
 
     # gerenciador = FifoGlobal
-    # gerenciador = FifoLocalFixo
+    gerenciador = FifoLocalFixo
     # gerenciador = FifoLocalVariavel
     # gerenciador = LRUGlobal
-    gerenciador = LRULocalFixo
+    # gerenciador = LRULocalFixo
     simulador = Simulador(gerenciador_memoria=gerenciador, **tamanhos)
     PygameInterface(simulador).game_loop()
